@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+import numpy as np
 from mathutils import Vector
 from os import path
 from .multifile import register_class
@@ -33,7 +34,7 @@ def get_bm_and_mask(mesh):
 
 @register_class
 class MaskExtract(bpy.types.Operator):
-    bl_idname = "sculpttk.mask_extract"
+    bl_idname = "sculpt_tool_kit.mask_extract"
     bl_label = "Extract Mask"
     bl_description = "Extract and solidify Masked region as a new object"
     bl_options = {"REGISTER"}
@@ -124,45 +125,79 @@ class MaskExtract(bpy.types.Operator):
 
 @register_class
 class MaskSplit(bpy.types.Operator):
-    bl_idname = "sculpttk.mask_split"
-    bl_label = "Split Mask"
-    bl_description = "Sepparate masked and unmasked regions into separate objects"
+    bl_idname = "sculpt_tool_kit.mask_split"
+    bl_label = "Mask Split"
+    bl_description = "Split masked and unmasked areas away."
     bl_options = {"REGISTER", "UNDO"}
 
-    def split(self, obj, compare):
-        bm, mask = get_bm_and_mask(obj.data)
-        for vert in bm.verts:
-            if compare(vert[mask]):
-                bm.verts.remove(vert)
-
-        for vert in bm.verts:
-            if len(vert.link_edges) < 3:
-                bm.verts.remove(vert)
-        out = bmesh.ops.holes_fill(bm, edges=bm.edges)
-        bmesh.ops.triangulate(bm, faces=out["faces"])
-        bm.to_mesh(obj.data)
-        bm.free()
+    keep: bpy.props.EnumProperty(
+        name="Keep",
+        items=(("MASKED", "Masked", "Keep darkened parts"),
+               ("UNMASKED", "Unmasked", "Keep light parts"),
+               ("NONE", "None", "Keep both sides in separate objects")),
+        default="NONE"
+    )
 
     @classmethod
     def poll(cls, context):
-        if context.active_object:
-            return context.active_object.type == "MESH"
+        return context.active_object.data
+
+    def invoke(self, context, event):
+        bpy.ops.ed.undo_push()
+        bpy.ops.object.mode_set(mode="OBJECT")
+        return context.window_manager.invoke_props_dialog(self)
+
+    def remove_half(self, bm, invert=False):
+        for face in bm.faces:
+            if (face.select and not invert) or (not face.select and invert):
+                bm.faces.remove(face)
+        for vert in bm.verts:
+            if len(vert.link_faces) == 0:
+                bm.verts.remove(vert)
+        bmesh.ops.holes_fill(bm, edges=bm.edges)
+        bmesh.ops.triangulate(bm, faces=[face for face in bm.faces if len(face.verts) > 4])
 
     def execute(self, context):
+        ob = context.active_object
+        bm, mask = get_bm_and_mask(ob.data)
+        bm.faces.ensure_lookup_table()
+        face_mask = []
 
-        old_obj = context.active_object
-        bm = bmesh.new()
-        bm.from_mesh(old_obj.data)
-        new_obj = create_object_from_bm(bm, old_obj.matrix_world)
-        self.split(new_obj, lambda v: v < 0.5)
-        self.split(old_obj, lambda v: v >= 0.5)
+        for face in bm.faces:
+            mask_sum = 0
+            for vert in face.verts:
+                mask_sum += vert[mask]
+            face_mask.append(mask_sum / len(face.verts))
+
+        geom1 = []
+
+        for face in bm.faces:
+            if face_mask[face.index] > 0.5:
+                geom1.append(face)
+                face.select = True
+            else:
+                face.select = False
+
+        bm1 = bm.copy()
+
+        invert = False
+        if self.keep == "MASKED":
+            invert = True
+
+        self.remove_half(bm, invert=invert)
+        bm.to_mesh(ob.data)
+
+        if self.keep == "NONE":
+            self.remove_half(bm1, invert=True)
+            bpy.ops.object.duplicate()
+            bm1.to_mesh(context.active_object.data)
 
         return {"FINISHED"}
 
 
 @register_class
 class MaskDeformRemove(bpy.types.Operator):
-    bl_idname = "sculpttk.mask_deform_remove"
+    bl_idname = "sculpt_tool_kit.mask_deform_remove"
     bl_label = "Remove Mask Deform"
     bl_description = "Remove Mask Rig"
     bl_options = {"REGISTER", "UNDO"}
@@ -202,7 +237,7 @@ class MaskDeformRemove(bpy.types.Operator):
 
 @register_class
 class MaskDeformAdd(bpy.types.Operator):
-    bl_idname = "sculpttk.mask_deform_add"
+    bl_idname = "sculpt_tool_kit.mask_deform_add"
     bl_label = "Add Mask Deform"
     bl_description = "Add a rig to deform masked region"
     bl_options = {"REGISTER", "UNDO"}
@@ -245,7 +280,7 @@ class MaskDeformAdd(bpy.types.Operator):
 
 @register_class
 class MaskDecimate(bpy.types.Operator):
-    bl_idname = "sculpttk.mask_decimate"
+    bl_idname = "sculpt_tool_kit.mask_decimate"
     bl_label = "Mask Decimate"
     bl_description = "Decimate masked region"
     bl_options = {"REGISTER", "UNDO"}
@@ -279,5 +314,116 @@ class MaskDecimate(bpy.types.Operator):
         bpy.ops.mesh.decimate(ratio=self.ratio, use_vertex_group=True, vertex_group_factor=10)
         bpy.ops.object.mode_set(mode="OBJECT")
         ob.vertex_groups.remove(vg)
+        context.area.tag_redraw()
+        return {"FINISHED"}
+
+
+class MaskBlurEngine:
+    def __init__(self, obj, max_edges=10):
+        bm, mask = get_bm_and_mask(obj.data)
+        bm.verts.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        self.bm = bm
+        self.mask_layer = mask
+        self.max_edges = max_edges
+        self.n = len(bm.verts)
+        self.edges = np.zeros((self.n, max_edges), dtype=np.int_)
+        self.edge_counts = np.zeros((self.n,), dtype=np.int_)
+        self.mask_values = np.zeros((self.n,), dtype=np.float_)
+        self.modified_mask = np.zeros((self.n,), dtype=np.float_)
+
+        for vert in bm.verts:
+            i = vert.index
+            self.mask_values[i] = vert[mask]
+            self.edge_counts[i] = len(vert.link_edges)
+            for j, edge in enumerate(vert.link_edges):
+                other = edge.other_vert(vert)
+                if j > self.max_edges:
+                    continue
+                self.edges[i, j] = other.index
+        self.reset()
+
+    def walk_edges(self, depth=0):
+        cols = np.arange(self.n)
+        ids = np.random.randint(0, self.max_edges, (self.n,)) % self.edge_counts
+        ids = ids.astype(np.int_)
+        adjacent_edges = self.edges[cols, ids]
+        for _ in range(depth):
+            ids = np.random.randint(0, self.max_edges, (self.n,)) % self.edge_counts[adjacent_edges]
+            ids = ids.astype(np.int_)
+            adjacent_edges = self.edges[adjacent_edges, ids]
+        return adjacent_edges
+
+    def reset(self):
+        self.modified_mask = self.mask_values.copy()
+
+    def blur(self, iterations=10, jumps=0):
+        for i in range(iterations):
+            edges = self.walk_edges(jumps)
+            self.modified_mask += self.mask_values[edges]
+        self.modified_mask /= iterations + 1
+
+    def get_modified_mask_bm(self):
+        for vert in self.bm.verts:
+            vert[self.mask_layer] = self.modified_mask[vert.index]
+        return self.bm
+
+
+@register_class
+class MaskBlur(bpy.types.Operator):
+    bl_idname = "sculpt_tool_kit.mask_blur_engine"
+    bl_label = "Mask Blur"
+    bl_description = "testr"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def invoke(self, context, event):
+        self.blur_engine = MaskBlurEngine(context.active_object)
+        return self.execute(context)
+
+    def execute(self, context):
+        print(self.blur_engine)
+        # self.blur_engine.blur(10, 10)
+        for i in range(100):
+            self.blur_engine.blur(10, 0)
+            self.blur_engine.mask_values = self.blur_engine.modified_mask.copy()
+        bm = self.blur_engine.get_modified_mask_bm()
+        bm.to_mesh(context.active_object.data)
+        return {"FINISHED"}
+
+
+@register_class
+class ExpandMask(bpy.types.Operator):
+    bl_idname = "sculpt_tool_kit.expand_mask"
+    bl_label = "Expand Mask"
+    bl_description = ""
+    bl_options = {"REGISTER", "UNDO"}
+
+    factor: bpy.props.FloatProperty(
+        name="Factor",
+        description="Factor",
+        default=1
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        bm, mask = get_bm_and_mask(context.active_object.data)
+        new_mask = {}
+        for vert in bm.verts:
+            val = vert[mask]
+            for edge in vert.link_edges:
+                other = edge.other_vert(vert)
+                val = max(other[mask], val)
+            new_mask[vert] = val * self.factor + vert[mask] * (1 - self.factor)
+
+        for vert in bm.verts:
+            vert[mask] = new_mask[vert]
+        bm.to_mesh(context.active_object.data)
         context.area.tag_redraw()
         return {"FINISHED"}

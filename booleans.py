@@ -3,7 +3,7 @@ from .multifile import register_class
 
 @register_class
 class Boolean(bpy.types.Operator):
-    bl_idname = "sculpttk.boolean"
+    bl_idname = "sculpt_tool_kit.boolean"
     bl_label = "Boolean"
     bl_description = "Boolean operation"
     bl_options = {"REGISTER", "UNDO"}
@@ -49,7 +49,7 @@ class Boolean(bpy.types.Operator):
 
 @register_class
 class Slice(bpy.types.Operator):
-    bl_idname = "sculpttk.slice_boolean"
+    bl_idname = "sculpt_tool_kit.slice_boolean"
     bl_label = "Slice Boolean"
     bl_description = "Cut selected objects using active object as a knife"
     bl_options = {"REGISTER", "UNDO"}

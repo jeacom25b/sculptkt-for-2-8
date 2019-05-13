@@ -18,7 +18,7 @@ def lerp(a, b, f):
 
 @register_class
 class SaveEnvelopeArmatute(bpy.types.Operator):
-    bl_idname = "sculpttk.save_envelope_armature"
+    bl_idname = "sculpt_tool_kit.save_envelope_armature"
     bl_label = "Save Envelope Armature"
     bl_description = "Save selected armature as an envelope base"
     bl_options = {"REGISTER"}
@@ -64,7 +64,7 @@ class ArmatureDeleteChecker:
 
 @register_class
 class DeleteEnvelopeArmature(bpy.types.Operator):
-    bl_idname = "sculpttk.delete_envelope_armature"
+    bl_idname = "sculpt_tool_kit.delete_envelope_armature"
     bl_label = "Delete Envelope Armature"
     bl_description = "Remove permanently a envelope armature preset"
     bl_options = {"REGISTER"}
@@ -98,7 +98,7 @@ class DeleteEnvelopeArmature(bpy.types.Operator):
 
 @register_class
 class LoadEnvelopeArmature(bpy.types.Operator):
-    bl_idname = "sculpttk.load_envelope_armature"
+    bl_idname = "sculpt_tool_kit.load_envelope_armature"
     bl_label = "Add armature preset"
     bl_description = "Add an envelope base"
     bl_options = {"REGISTER", "UNDO"}
@@ -127,7 +127,7 @@ class LoadEnvelopeArmature(bpy.types.Operator):
 
 @register_class
 class ConvertEnvelopeArmature(bpy.types.Operator):
-    bl_idname = "sculpttk.convert_envelope_armature"
+    bl_idname = "sculpt_tool_kit.convert_envelope_armature"
     bl_label = "Convert Envelope To Mesh"
     bl_description = "Create a mesh out of the envelope base"
     bl_options = {"REGISTER", "UNDO"}

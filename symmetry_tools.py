@@ -4,7 +4,7 @@ from .multifile import register_class
 
 @register_class
 class Symmetrize(bpy.types.Operator):
-    bl_idname = "sculpttk.symmetrize"
+    bl_idname = "sculpt_tool_kit.symmetrize"
     bl_label = "Symmetrize"
     bl_description = "Mirror mesh around an axis"
     bl_options = {"REGISTER", "UNDO"}

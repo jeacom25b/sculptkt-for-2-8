@@ -39,7 +39,7 @@ def edge_length_squared(edge):
 
 @register_class
 class VoxelRemesh(bpy.types.Operator):
-    bl_idname = "sculpttk.voxel_remesh"
+    bl_idname = "sculpt_tool_kit.voxel_remesh"
     bl_label = "Voxel Remesh"
     bl_description = "Remesh using remesh modifier."
     bl_options = {"REGISTER", "UNDO"}
@@ -55,6 +55,12 @@ class VoxelRemesh(bpy.types.Operator):
         name="Clean Topology",
         description="Run a cleaning algorith to make topology simpler and smoother",
         default=True
+    )
+
+    smooth_shading: bpy.props.BoolProperty(
+        name="Smooth Shading",
+        description="Add Smooth Shading",
+        default=False
     )
 
     def _topology_optimize(self, bm):
@@ -124,100 +130,36 @@ class VoxelRemesh(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        ob = context.active_object
-        bm = bmesh.new()
-        bm.from_mesh(ob.data)
-        tree = BVHTree.FromBMesh(bm)
-        md = ob.modifiers.new(type="REMESH", name="Remesh")
-        md.mode = "SMOOTH"
-        md.mode = "SMOOTH"
-        md.use_remove_disconnected = False
-        md.octree_depth = self.depth
-        bpy.ops.object.modifier_apply(modifier=md.name)
-        bm = bmesh.new()
-        bm.from_mesh(ob.data)
-        if self.clean_topology:
-            self._topology_optimize(bm)
-            self._smooth_reproject(bm)
-        surfacce_snap(bm.verts, tree)
-        bm.to_mesh(ob.data)
-        return {"FINISHED"}
-
-
-@register_class
-class CombRemesh(bpy.types.Operator):
-    bl_idname = "sculpttk.comb_remesh"
-    bl_label = "Comb Remesh"
-    bl_description = ""
-    bl_options = {"REGISTER", "UNDO"}
-
-    interations: bpy.props.IntProperty(
-        name="Interations",
-        description="How many times to repeat",
-        min=1,
-        default=10
-    )
-
-    detail: bpy.props.FloatProperty(
-        name="Resolution",
-        description="How dense the resulting mesh will be",
-        min=0.0,
-        default=40
-    )
-
-    def update_topology(self, bm, edge_size):
-        upper_size = (edge_size * 1.5) ** 2
-        lower_size = (edge_size * 0.6) ** 2
-
-        subdivide = [edge for edge in bm.edges if edge_length_squared(edge) > upper_size]
-        bmesh.ops.subdivide_edges(bm, edges=subdivide, cuts=1)
-        bmesh.ops.triangulate(bm, faces=bm.faces)
-
-        seen_verts = set()
-        collapse = []
-        for edge in bm.edges:
-            if edge_length_squared(edge) < lower_size:
-                verts = set(edge.verts)
-                if not verts & seen_verts:
-                    collapse.append(edge)
-                    seen_verts |= verts
-
-        bmesh.ops.collapse(bm, edges=collapse)
-        bmesh.ops.dissolve_verts(bm, verts=[vert for vert in bm.verts if len(vert.link_edges) < 5])
-        bmesh.ops.triangulate(bm, faces=bm.faces)
-        bmesh.ops.beautify_fill(bm, faces=bm.faces)
-
-    def relax_topology(self, bm, target_length):
-        for vert in bm.verts:
-            edge = max(vert.link_edges, key=edge_length_squared)
-            other = edge.other_vert(vert)
-            vec = (vert.co + other.co * 0.1) / 1.1
-            vert.co = vec
-            vec -= vert.co
-            vec *= (vert.co - other.co).length - target_length
-            vec -= vert.normal.dot(vec) * vert.normal
-            vert.co += vec
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        ob = context.active_object
-        size = max(ob.dimensions) / self.detail
-        bm = bmesh.new()
-        bm.from_mesh(ob.data)
-
-        self.update_topology(bm, size)
-        self.relax_topology(bm, size)
-        bm.to_mesh(ob.data)
-        context.area.tag_redraw()
+        for ob in context.view_layer.objects.selected:
+            if not ob.type == "MESH":
+                continue
+            print(ob)
+            context.view_layer.objects.active = ob
+            bm = bmesh.new()
+            bm.from_mesh(ob.data)
+            tree = BVHTree.FromBMesh(bm)
+            md = ob.modifiers.new(type="REMESH", name="Remesh")
+            md.mode = "SMOOTH"
+            md.mode = "SMOOTH"
+            md.use_remove_disconnected = False
+            md.octree_depth = self.depth
+            bpy.ops.object.modifier_apply(modifier=md.name)
+            bm = bmesh.new()
+            bm.from_mesh(ob.data)
+            if self.clean_topology:
+                self._topology_optimize(bm)
+                self._topology_optimize(bm)
+                self._smooth_reproject(bm)
+            surfacce_snap(bm.verts, tree)
+            bm.to_mesh(ob.data)
+        if self.smooth_shading:
+            bpy.ops.object.shade_smooth()
         return {"FINISHED"}
 
 
 @register_class
 class Decimate(bpy.types.Operator):
-    bl_idname = "sculpttk.decimate"
+    bl_idname = "sculpt_tool_kit.decimate"
     bl_label = "Simple Decimate"
     bl_description = "Simple uniform decimation"
     bl_options = {"REGISTER", "UNDO"}
