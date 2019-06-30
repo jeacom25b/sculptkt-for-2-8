@@ -140,7 +140,7 @@ class MaskSplit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.active_object.data
+        return context.active_object and context.active_object.type == "MESH"
 
     def invoke(self, context, event):
         bpy.ops.ed.undo_push()

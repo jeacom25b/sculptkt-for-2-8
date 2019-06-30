@@ -4,7 +4,10 @@ import json
 from os import path
 from .multifile import register_class, register_function, unregister_function, ReloadStorage
 from .envelope_builder import get_armature_filenames
+from .keymap_items import key_types
 from bpy.app.handlers import persistent
+
+ADDON_NAME = os.path.basename(os.path.dirname(__file__))
 
 
 def space(layout, length=5):
@@ -425,7 +428,128 @@ class KeyNumSave(bpy.types.Operator):
         return {"FINISHED"}
 
 
-addon_keymaps = ReloadStorage.get("keymaps")
+def set_keymap():
+    prefs = bpy.context.preferences.addons[ADDON_NAME].preferences
+    addon_keymaps = ReloadStorage.get("keymaps")
+    kcfg = bpy.context.window_manager.keyconfigs.addon
+    if kcfg:
+        km = kcfg.keymaps.new(name='Sculpt', space_type="EMPTY")
+        kmi = km.keymap_items.new("wm.call_menu_pie",
+                                  type=prefs.key,
+                                  alt=prefs.alt,
+                                  shift=prefs.shift,
+                                  ctrl=prefs.ctrl,
+                                  value="PRESS")
+        kmi.properties.name = "SCULPT_TOOL_KIT_MT_sculpt_menu"
+        addon_keymaps.append((km, kmi))
+
+        km = kcfg.keymaps.new(name='Object Mode', space_type="EMPTY")
+        kmi = km.keymap_items.new("wm.call_menu_pie",
+                                  type=prefs.key,
+                                  alt=prefs.alt,
+                                  shift=prefs.shift,
+                                  ctrl=prefs.ctrl,
+                                  value="PRESS")
+        kmi.properties.name = "SCULPT_TOOL_KIT_MT_object_menu"
+        addon_keymaps.append((km, kmi))
+
+
+def remove_keymap():
+    addon_keymaps = ReloadStorage.get("keymaps")
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+
+    addon_keymaps.clear()
+
+
+def reload_keymap(self, context):
+    remove_keymap()
+    set_keymap()
+
+
+@register_class
+class SetShortcut(bpy.types.Operator):
+    bl_idname = "sculpt_toolkit.set_shortcut"
+    bl_label = "Click to choose a new shortcut"
+    bl_description = "Change sculpt_toolkit's shortcut"
+    bl_options = {"REGISTER", "INTERNAL"}
+
+    button_text = "Change Shortcut"
+
+    @classmethod
+    def set_button_text(cls, text, context):
+        context.area.tag_redraw()
+        cls.button_text = text
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def invoke(self, context, event):
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        alt = event.alt
+        shift = event.shift
+        ctrl = event.ctrl
+
+        if event.value in {"PRESS", "RELEASE"}:
+            txt = ""
+            if ctrl:
+                txt += "Ctrl "
+            if alt:
+                txt += "Alt "
+            if shift:
+                txt += "Shift"
+            self.set_button_text(txt, context)
+
+        if not (alt or shift or ctrl):
+            self.set_button_text("Press the new shortcut", context)
+
+        if event.type not in {"MOUSEMOVE",
+                              "INBETWEEN_MOUSEMOVE",
+                              "LEFT_CTRL",
+                              "LEFT_ALT",
+                              "LEFT_SHIFT",
+                              "RIGHT_ALT",
+                              "RIGHT_CTRL",
+                              "RIGHT_SHIFT", }:
+            print(event.type)
+            prefs = context.preferences.addons[ADDON_NAME].preferences
+            prefs.ctrl = ctrl
+            prefs.alt = alt
+            prefs.shift = shift
+            prefs.key = event.type
+            self.set_button_text("Click to choose a new shortcut", context)
+            return {"FINISHED"}
+
+        elif event.type == "ESC":
+            return {"CANCELLED"}
+
+        return {"RUNNING_MODAL"}
+
+
+
+
+@register_class
+class Prefs(bpy.types.AddonPreferences):
+    bl_idname = ADDON_NAME
+    bl_label = "Keymap Preferences"
+
+    alt = bpy.props.BoolProperty(name="alt", default=True, update=reload_keymap)
+    shift = bpy.props.BoolProperty(name="Shift", default=False, update=reload_keymap)
+    ctrl = bpy.props.BoolProperty(name="Ctrl", default=False, update=reload_keymap)
+    key = bpy.props.EnumProperty(name="key", default="W", items=[(k, k, k) for k in key_types], update=reload_keymap)
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        row.prop(self, "alt")
+        row.prop(self, "shift")
+        row.prop(self, "ctrl")
+        row.prop(self, "key", text="")
+        layout.operator("sculpt_toolkit.set_shortcut", text=SetShortcut.button_text)
 
 
 @register_function
@@ -436,28 +560,12 @@ def register():
         min=-1,
         max=9
     )
-
-    kcfg = bpy.context.window_manager.keyconfigs.addon
-    if kcfg:
-        km = kcfg.keymaps.new(name='Sculpt', space_type="EMPTY")
-        kmi = km.keymap_items.new("wm.call_menu_pie", type="W", alt=True, value="PRESS")
-        kmi.properties.name = "SCULPT_TOOL_KIT_MT_sculpt_menu"
-        addon_keymaps.append((km, kmi))
-
-        km = kcfg.keymaps.new(name='Object Mode', space_type="EMPTY")
-        kmi = km.keymap_items.new("wm.call_menu_pie", type="W", alt=True, value="PRESS")
-        kmi.properties.name = "SCULPT_TOOL_KIT_MT_object_menu"
-        addon_keymaps.append((km, kmi))
-
+    set_keymap()
     bpy.app.handlers.load_post.append(key_num_load)
 
 
 @unregister_function
 def unregister():
     del bpy.types.Brush.sckt_key_num
-
-    for km, kmi in addon_keymaps:
-        km.keymap_items.remove(kmi)
-
     bpy.app.handlers.load_post.remove(key_num_load)
-    addon_keymaps.clear()
+    remove_keymap()

@@ -28,7 +28,6 @@ class Symmetrize(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.ed.undo_push()
-        context.scene.update()
         ob = context.active_object
         if ob.mode == "SCULPT" and ob.use_dynamic_topology_sculpting:
             context.scene.tool_settings.sculpt.symmetrize_direction = self.axis

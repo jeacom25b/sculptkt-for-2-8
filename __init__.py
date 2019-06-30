@@ -7,13 +7,13 @@ from .multifile import register, unregister, add_module, import_modules, registe
 
 bl_info = {
     "name": "Sculpt Tool Kit",
-    "description": "Sculpting tools to improve workflow, remember: [Alt + W]",
+    "description": "Sculpting tools to improve workflow",
     "author": "Jean Da Costa Machado",
     "version": (1, 28, 1),
     "blender": (2, 80, 0),
     "wiki_url": "",
     "category": "Sculpt",
-    "location": "3D View > Properties (shortcut : N) > SculpTKt tab. Or you can use Alt + W"}
+    "location": "3D View > Properties (shortcut : N) > SculpTKt tab"}
 
 add_module("mask_tools")
 add_module("remesh")
