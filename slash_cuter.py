@@ -194,7 +194,7 @@ class PolyCut:
 
         self.ctrl = event.ctrl
 
-        if event.value == "RELEASE":
+        if event.type == "MOUSEMOVE" and event.value == "RELEASE":
             self.left = False
             self.right = False
 
