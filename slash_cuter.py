@@ -194,7 +194,7 @@ class PolyCut:
 
         self.ctrl = event.ctrl
 
-        if event.type == "MOUSEMOVE" and event.value == "RELEASE":
+        if event.value == "RELEASE":
             self.left = False
             self.right = False
 
@@ -318,9 +318,13 @@ class RectangleCut(PolyCut):
 
     def handle_event(self, context, event):
         self.update_states(event)
+
         if self.mode == "DRAW":
+
             if (self.left or event.type == "RET") and event.value == "PRESS":
-                self.points.append(self.mouse_co)
+                if not event.type == "MOUSEMOVE":
+                    print("append Point")
+                    self.points.append(self.mouse_co)
                 return {"RUNNING_MODAL"}
 
             if len(self.points) >= 2:
@@ -365,7 +369,6 @@ class RectangleCut(PolyCut):
         self.renderer.add_circle(self.mouse_co, 5, 6, self.seam_color)
         if self.points:
             corners = self.get_rect_corners(self.points[0], self.mouse_co)
-            print(corners)
             for i in range(len(corners)):
                 self.renderer.add_line(corners[i], corners[i - 1], self.color)
             self.renderer.add_line(self.points[0], self.mouse_co, self.seam_color)
@@ -378,8 +381,10 @@ class EllipseCut(PolyCut):
     def handle_event(self, context, event):
         self.update_states(event)
         if self.mode == "DRAW":
-            if self.left:
-                self.points.append(self.true_mouse_co)
+
+            if (self.left or event.type == "RET") and event.value == "PRESS":
+                if not event.type == "MOUSEMOVE":
+                    self.points.append(self.true_mouse_co)
                 return {"RUNNING_MODAL"}
 
             if len(self.points) > 1:

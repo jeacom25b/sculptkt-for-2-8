@@ -114,7 +114,6 @@ class LoadEnvelopeArmature(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        print(self.type)
         file = os.path.join(ARMATURE_PRESETS_PATH, self.type)
         with bpy.data.libraries.load(file) as (data_from, data_to):
             data_to.objects = [data_from.objects[0]]

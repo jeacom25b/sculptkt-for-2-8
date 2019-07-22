@@ -342,7 +342,6 @@ class NumberRowListener(bpy.types.Operator):
         return True
 
     def invoke(self, context, event):
-        print(self.running_get())
 
         if not self.running_get():
             context.window_manager.modal_handler_add(self)
@@ -360,7 +359,6 @@ class NumberRowListener(bpy.types.Operator):
 
         if context.active_object:
             if context.active_object.mode == "SCULPT" and event.value == "PRESS":
-                print("SCULPT")
                 if str(event.type) in self.numbers:
                     n = self.numbers[event.type]
                     matching_brushes = []
@@ -515,7 +513,6 @@ class SetShortcut(bpy.types.Operator):
                               "RIGHT_ALT",
                               "RIGHT_CTRL",
                               "RIGHT_SHIFT", }:
-            print(event.type)
             prefs = context.preferences.addons[ADDON_NAME].preferences
             prefs.ctrl = ctrl
             prefs.alt = alt
@@ -537,10 +534,10 @@ class Prefs(bpy.types.AddonPreferences):
     bl_idname = ADDON_NAME
     bl_label = "Keymap Preferences"
 
-    alt = bpy.props.BoolProperty(name="alt", default=True, update=reload_keymap)
-    shift = bpy.props.BoolProperty(name="Shift", default=False, update=reload_keymap)
-    ctrl = bpy.props.BoolProperty(name="Ctrl", default=False, update=reload_keymap)
-    key = bpy.props.EnumProperty(name="key", default="W", items=[(k, k, k) for k in key_types], update=reload_keymap)
+    alt: bpy.props.BoolProperty(name="alt", default=True, update=reload_keymap)
+    shift: bpy.props.BoolProperty(name="Shift", default=False, update=reload_keymap)
+    ctrl: bpy.props.BoolProperty(name="Ctrl", default=False, update=reload_keymap)
+    key: bpy.props.EnumProperty(name="key", default="W", items=[(k, k, k) for k in key_types], update=reload_keymap)
 
     def draw(self, context):
         layout = self.layout

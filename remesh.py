@@ -133,7 +133,6 @@ class VoxelRemesh(bpy.types.Operator):
         for ob in context.view_layer.objects.selected:
             if not ob.type == "MESH":
                 continue
-            print(ob)
             context.view_layer.objects.active = ob
             bm = bmesh.new()
             bm.from_mesh(ob.data)
