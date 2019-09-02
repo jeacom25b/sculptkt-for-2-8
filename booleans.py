@@ -1,6 +1,7 @@
 import bpy
 from .multifile import register_class
 
+
 @register_class
 class Boolean(bpy.types.Operator):
     bl_idname = "sculpt_tool_kit.boolean"
@@ -9,7 +10,7 @@ class Boolean(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     operation: bpy.props.EnumProperty(
-        items = (
+        items=(
             ("UNION", "Union", "Union"),
             ("INTERSECT", "Intersect", "Union"),
             ("DIFFERENCE", "Difference", "Difference"),
@@ -47,16 +48,18 @@ class Boolean(bpy.types.Operator):
 
         return {"FINISHED"}
 
+
 @register_class
 class Slice(bpy.types.Operator):
     bl_idname = "sculpt_tool_kit.slice_boolean"
-    bl_label = "Slice Boolean"
+    bl_label = "Mesh Slice"
     bl_description = "Cut selected objects using active object as a knife"
     bl_options = {"REGISTER", "UNDO"}
 
     thickness: bpy.props.FloatProperty(
         name="Thickness",
-        default = 0.0001
+        default=0.0001,
+        min=0.000001
     )
 
     remove_objects: bpy.props.BoolProperty(
@@ -70,33 +73,26 @@ class Slice(bpy.types.Operator):
             return len(context.view_layer.objects.selected) > 1
 
     def execute(self, context):
-        objects = list(context.view_layer.objects.selected)
-        active = context.view_layer.objects.active
-        objects.remove(active)
+        knife = context.active_object
+        objs = [obj for obj in context.view_layer.objects.selected if obj.type == "MESH" and obj is not knife]
 
-        for obj in objects:
-            if not obj.type == "MESH":
-                continue
-            md = obj.modifiers.new(type="SOLIDIFY", name="Thickness")
-            md.thickness = self.thickness
-            md_bool = active.modifiers.new(type="BOOLEAN", name="Bool")
-            md_bool.operation = "DIFFERENCE"
-            md_bool.object = obj
-            context.scene.update()
-            bpy.ops.object.modifier_apply(modifier=md_bool.name)
-            obj.modifiers.remove(md)
+        solid = knife.modifiers.new(type="SOLIDIFY", name="Solid")
+        solid.thickness = self.thickness
+
+        for obj in objs:
+            context.view_layer.objects.active = obj
+            bool = obj.modifiers.new(type="BOOLEAN", name="Bool")
+            bool.operation = "DIFFERENCE"
+            bool.object = knife
+            bpy.ops.object.modifier_apply(modifier=bool.name)
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.mesh.separate(type="LOOSE")
+            bpy.ops.object.mode_set(mode="OBJECT")
 
         if self.remove_objects:
-            for obj in objects:
-                if not obj.type == "MESH":
-                    continue
-                bpy.data.meshes.remove(obj.data)
+            bpy.data.meshes.remove(knife.data)
         else:
-            for obj in objects:
-                obj.select_set(False)
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.separate(type="LOOSE")
-        bpy.ops.object.mode_set(mode="OBJECT")
+            knife.modifiers.remove(solid)
 
         return {"FINISHED"}
