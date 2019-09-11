@@ -466,7 +466,7 @@ class Slash(bpy.types.Operator):
     _timer = None
 
     help_text = [
-        "Mode: PolyLine = [D], Ellipse = [E], Rectangle = [R]",
+        "Mode: PolyLine = [D], Ellipse = [E], Rectangle = [R], Spline = [S]",
         "Move Around: [G]",
         "Toggle Ciclic: [C]",
         "Regular Mode: [Ctrl]",
