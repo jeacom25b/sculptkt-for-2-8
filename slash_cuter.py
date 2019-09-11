@@ -482,7 +482,6 @@ class Slash(bpy.types.Operator):
         cls.default_tool = tool
 
     def invoke(self, context, event):
-        self._points = []
         self.draw_callback_px = Draw2D()
         self.draw_callback_px.setup_handler()
         self.tool = self.default_tool(self.draw_callback_px)
