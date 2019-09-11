@@ -190,3 +190,69 @@ class Decimate(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="OBJECT")
 
         return {"FINISHED"}
+
+
+@register_class
+class BoundaryLockedRemesh(bpy.types.Operator):
+    bl_idname = "sculpt_tool_kit.bdremesh"
+    bl_label = "Boundary Locked Remesh"
+    bl_description = "Remesh meshes with boundaries"
+    bl_options = {"REGISTER", "UNDO"}
+
+    bm = None
+    Iterations = bpy.props.IntProperty(name="Iterations", default=15)
+
+    def pool(self, context):
+        return context.active_object and context.active_object.type == "MESH"
+
+    def execute(self, context):
+        ob = context.active_object
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        for i in range(self.Iterations):
+            self.edge_length_soften_from_bd(bm)
+            self.edge_length_equalize(bm)
+        bm.to_mesh(ob.data)
+        bpy.context.area.tag_redraw()
+        return {"FINISHED"}
+
+    @staticmethod
+    def edge_length_soften_from_bd(bm):
+        seen_verts = set()
+        split = []
+        collapse = []
+        e_lengths = [e.calc_length() for e in bm.edges]
+        bm.edges.ensure_lookup_table()
+        for edge in bm.edges:
+            if edge.is_boundary:
+                continue
+            avg_le = 0
+            tot = 0
+            for face in edge.link_faces:
+                for o_edge in face.edges:
+                    if o_edge is not edge:
+                        avg_le += e_lengths[o_edge.index]
+                        tot += 1
+            avg_le /= tot
+            if e_lengths[edge.index] > 1.5 * avg_le:
+                split.append(edge)
+
+            elif e_lengths[edge.index] < 0.5 * avg_le:
+                verts = set(edge.verts)
+                if not verts & seen_verts and not True in (v.is_boundary for v in verts):
+                    collapse.append(edge)
+                    seen_verts |= verts
+
+        bmesh.ops.collapse(bm, edges=collapse)
+        bmesh.ops.subdivide_edges(bm, edges=[e for e in split if e.is_valid], cuts=1)
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+        bmesh.ops.dissolve_verts(bm, verts=[v for v in bm.verts if not v.is_boundary and len(v.link_edges) < 4])
+
+    @staticmethod
+    def edge_length_equalize(bm):
+        for vert in bm.verts:
+            if not vert.is_boundary:
+                edge = max(vert.link_edges, key=lambda e: (e.other_vert(vert).co - vert.co).length_squared)
+                d = vert.co - edge.other_vert(vert).co
+                d -= vert.normal.dot(d) * vert.normal
+                vert.co -= d * 0.05

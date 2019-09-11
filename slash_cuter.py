@@ -1,21 +1,9 @@
 import bpy
 import bmesh
-import gpu
-import bgl
 from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_origin_3d, region_2d_to_location_3d
-from gpu_extras import batch
 from mathutils import Vector
-from math import cos, sin, pi
-import blf
 from .multifile import register_class
-
-def lerp(a, b, t):
-    return (b * t) + (a * (1 - t))
-
-
-def circle_point(center=(0, 0), radius=1, t=0):
-    t = t * 2 * pi
-    return Vector((center[0] + sin(t) * radius, center[1] + cos(t) * radius))
+from .draw_2d import Draw2D, lerp, circle_point
 
 
 def screen_space_to_3d(location, distance, context):
@@ -78,83 +66,6 @@ def cut(context, points, thickness=0.0001, distance_multiplier=10, ciclic=True):
 
     bpy.data.objects.remove(cuter)
     bpy.data.meshes.remove(mesh)
-
-
-class DrawCallbackPx:
-    def __init__(self):
-        self.vertices = []
-        self.colors = []
-        self.text = []
-        self.thickness = 2
-        self.font_shadow = (0, 0, 0, 0.5)
-        self.shader = gpu.shader.from_builtin("2D_FLAT_COLOR")
-        self.batch_redraw = False
-        self.batch = None
-        self.handler = None
-
-    def __call__(self):
-        self.draw()
-
-    def add_text(self, text, location, size, color=(0, 0, 0, 1), dpi=72):
-        self.text.append((text, location, size, color, dpi))
-
-    def add_circle(self, center, radius, resolution, color=(1, 0, 0, 1)):
-        self.batch_redraw = True
-        for i in range(resolution):
-            line_point_a = circle_point(center, radius, i / resolution)
-            line_point_b = circle_point(center, radius, (i + 1) / resolution)
-            self.add_line(line_point_a, line_point_b, color)
-
-    def add_line(self, point_a, point_b, color_a=(1, 0, 0, 1), color_b=None):
-        self.batch_redraw = True
-        self.vertices.append(point_a)
-        self.vertices.append(point_b)
-        self.colors.append(color_a)
-        self.colors.append(color_b if color_b else color_a)
-
-    def remove_last_line(self):
-        self.batch_redraw = True
-        self.vertices.pop(-1)
-        self.vertices.pop(-1)
-
-    def remove_last_text(self):
-        self.batch_redraw = True
-        self.text.pop(-1)
-
-    def clear(self):
-        self.batch_redraw = True
-        self.vertices.clear()
-        self.colors.clear()
-        self.text.clear()
-
-    def update_batch(self):
-        self.batch_redraw = False
-        self.batch = batch.batch_for_shader(self.shader, "LINES",
-                                            {"pos": self.vertices, "color": self.colors})
-
-    def setup_handler(self):
-        self.handler = bpy.types.SpaceView3D.draw_handler_add(self, (), "WINDOW", "POST_PIXEL")
-
-    def remove_handler(self):
-        bpy.types.SpaceView3D.draw_handler_remove(self.handler, "WINDOW")
-
-    def draw(self):
-        bgl.glEnable(bgl.GL_BLEND)
-        if self.batch_redraw or not self.batch:
-            self.update_batch()
-        bgl.glLineWidth(self.thickness)
-        self.shader.bind()
-        self.batch.draw(self.shader)
-        bgl.glLineWidth(1)
-
-        for text, location, size, color, dpi in self.text:
-            blf.position(0, location[0], location[1], 0)
-            blf.size(0, size, dpi)
-            blf.color(0, *color)
-            blf.shadow(0, 3, *self.font_shadow)
-            blf.draw(0, text)
-
-        bgl.glDisable(bgl.GL_BLEND)
 
 
 class PolyCut:
@@ -248,9 +159,7 @@ class PolyCut:
                 self.points.append(self.mouse_co)
                 return {"RUNNING_MODAL"}
 
-            elif len(self.points) > 1 and \
-                    dist <= self.confirm_distance and \
-                    event.type in {"LEFTMOUSE", "RET"} and event.value == "PRESS":
+            elif event.type == "LEFTMOUSE" and event.value == "PRESS" and dist < self.confirm_distance:
                 self.cut(context)
                 return {"FINISHED"}
 
@@ -260,6 +169,10 @@ class PolyCut:
                 self.mode = "DRAW"
 
             return {"RUNNING_MODAL"}
+
+        elif event.type == "RET":
+            self.cut(context)
+            return {"FINISHED"}
 
         if self.right or event.type == "ESC":
             return {"CANCELLED"}
@@ -450,6 +363,99 @@ class EllipseCut(PolyCut):
         self.renderer.add_circle(self.true_mouse_co, 5, 6, self.seam_color)
 
 
+class SplineCut(PolyCut):
+    spline_resolution = 2
+
+    def handle_event(self, context, event):
+        self.update_states(event)
+        if self.mode == "DRAW":
+            if (self.left or event.type == "RET") and event.value == "PRESS":
+                if not event.type == "MOUSEMOVE":
+                    self.points.append(self.mouse_co)
+                    pass
+                return {"RUNNING_MODAL"}
+
+            if event.type == "RET":
+                self.cut(context)
+                return {"FINISHED"}
+
+            elif self.undo:
+                if self.points:
+                    self.points.pop(-1)
+                    self.undo = False
+                    return {"RUNNING_MODAL"}
+
+        if event.type == "WHEELUPMOUSE":
+            self.spline_resolution += 1
+
+        elif event.type == "WHEELDOWNMOUSE":
+            self.spline_resolution -= 1
+
+        if self.spline_resolution > 5:
+            self.spline_resolution = 5
+
+        if self.mode == "MOVE":
+            self.translate_points(self.mouse_co - self.last_co)
+            if self.left:
+                self.mode = "DRAW"
+            return {"RUNNING_MODAL"}
+
+        if self.left or event.type == "ESC":
+            return {"CANCELLED"}
+
+        return {"RUNNING_MODAL"}
+
+    @staticmethod
+    def subdiv_points(points):
+        new_points = []
+        for i in range(len(points)-1):
+            p1 = points[i]
+            p3 = points[i+1]
+            p2 = (p1 + p3) * 0.5
+            new_points.append(p1)
+            new_points.append(p2)
+        if len(points) > 1:
+            new_points.append(p3)
+        return new_points
+
+    @staticmethod
+    def points_smooth(points, swrink=False, inflate=True):
+        vecs = [Vector((0, 0)) for _ in range(len(points))]
+        for i in range(len(vecs) - 3):
+            p0 = points[i ]
+            p1 = points[i + 1]
+            p2 = points[i + 2]
+            d = (p1 - ((p0 + p2) * 0.5)) * 0.3
+            if inflate:
+                vecs[i] += d
+                vecs[i + 2] += d
+            if swrink:
+                vecs[i + 1] -= d
+        return [points[i] + vecs[i] for i in range(len(points))]
+
+    def draw(self):
+        self.renderer.clear()
+        points = self.points.copy()
+        points.append(self.mouse_co)
+        for point in points:
+            self.renderer.add_circle(point, 5, 6, self.seam_color)
+
+        for i in range(self.spline_resolution):
+            points = self.points_smooth(self.subdiv_points(points))
+
+        for i in range(len(points) - 1):
+            self.renderer.add_line(points[i], points[i + 1], self.color)
+
+        self.renderer.update_batch
+
+    def cut(self, context):
+        points = self.points.copy()
+        points.append(self.mouse_co)
+        for i in range(self.spline_resolution):
+            points = self.points_smooth(self.subdiv_points(points))
+        cut(context, points, ciclic=False)
+
+
 @register_class
 class Slash(bpy.types.Operator):
     bl_idname = "sculpt_tool_kit.slash"
@@ -477,7 +483,7 @@ class Slash(bpy.types.Operator):
 
     def invoke(self, context, event):
         self._points = []
-        self.draw_callback_px = DrawCallbackPx()
+        self.draw_callback_px = Draw2D()
         self.draw_callback_px.setup_handler()
         self.tool = self.default_tool(self.draw_callback_px)
         self.left = False
@@ -498,6 +504,10 @@ class Slash(bpy.types.Operator):
             elif event.type == "R":
                 self.tool = RectangleCut(self.draw_callback_px)
                 self.set_default_tool(RectangleCut)
+
+            elif event.type == "S":
+                self.tool = SplineCut(self.draw_callback_px)
+                self.set_default_tool(SplineCut)
 
         ret = self.tool.handle_event(context, event)
         self.tool.draw()

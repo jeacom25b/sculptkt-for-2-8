@@ -4,6 +4,7 @@ import numpy as np
 from mathutils import Vector
 from os import path
 from .multifile import register_class
+from .draw_2d import VerticalSlider
 
 DEFORM_RIG_PATH = path.join(path.dirname(path.realpath(__file__)), "Mask Deform Rig.blend")
 
@@ -31,6 +32,81 @@ def get_bm_and_mask(mesh):
 
     return bm, layer
 
+def boundary_loops_create(bm, loops=2, smoothing=6, smooth_depth=3):
+    edges = [e for e in bm.edges if e.is_boundary]
+    for _ in range(loops):
+        geom = bmesh.ops.extrude_edge_only(bm, edges=edges)["geom"]
+        edges = [e for e in geom if isinstance(e, bmesh.types.BMEdge)]
+    boundary_verts = set(v for v in geom if isinstance(v, bmesh.types.BMVert))
+    seen_verts = boundary_verts.copy()
+    curr_layer = boundary_verts
+    new_layer = set()
+    choosen_ones = set()
+    for _ in range(smooth_depth + loops):
+        for vert in curr_layer:
+            for other in (e.other_vert(vert) for e in vert.link_edges):
+                if other not in seen_verts:
+                    new_layer.add(other)
+                    seen_verts.add(other)
+                    choosen_ones.add(other)
+        curr_layer.clear()
+        new_layer, curr_layer = curr_layer, new_layer
+    choosen_ones = list(choosen_ones)
+    while smooth_depth > 0:
+        factor = min(smooth_depth, 0.5)
+        smooth_depth -= 0.5
+        bmesh.ops.smooth_vert(bm, verts=choosen_ones, use_axis_x=True,
+                                                use_axis_y=True,
+                                                use_axis_z=True,
+                                                factor=factor)
+
+
+class BoundaryPolish:
+    def __init__(self, bm):
+        bm.verts.ensure_lookup_table()
+        class NeighborData:
+            def __init__(self, vert, others):
+                self.vert = vert
+                self.others = others
+                self.disp_vec = Vector()
+
+            def update_vec(self):
+                self.disp_vec *= 0
+                for other in self.others:
+                    self.disp_vec += other.co
+                self.disp_vec /= len(self.others)
+                self.disp_vec = self.vert.co - self.disp_vec
+
+        self.boundary_mapping = {}
+        for vert in bm.verts:
+            if vert.is_boundary:
+                others = []
+                for other in (edge.other_vert(vert) for edge in vert.link_edges if edge.is_boundary):
+                    if other.is_boundary:
+                        others.append(other)
+                self.boundary_mapping[vert] = NeighborData(vert, others)
+
+        self.original_coords = [vert.co.copy() for vert in self.boundary_mapping.keys()]
+
+    def reset(self):
+        for vert, co in zip(self.boundary_mapping.keys(), self.original_coords):
+            vert.co.xyz = co.xyz
+
+    def polish(self, iterations=30):
+        for _ in range(iterations):
+            for dt in self.boundary_mapping.values():
+                dt.update_vec()
+            for vert, dt in self.boundary_mapping.items():
+                avg_vec = Vector()
+                avg_vec -= dt.disp_vec * 0.5
+                for other in dt.others:
+                    avg_vec += self.boundary_mapping[other].disp_vec * 0.25
+                vert.co += avg_vec * 0.5
+
+    def back_to_mesh(self, mesh):
+        for vert in self.boundary_mapping.keys():
+            mesh.vertices[vert.index].co = vert.co
+
 
 @register_class
 class MaskExtract(bpy.types.Operator):
@@ -41,6 +117,7 @@ class MaskExtract(bpy.types.Operator):
     obj = None
     solidify = None
     smooth = None
+    polish_iterations = 5
     last_mouse = 0
     click_count = 0
 
@@ -55,9 +132,13 @@ class MaskExtract(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="OBJECT")
         bm, mask = get_bm_and_mask(context.active_object.data)
 
-        for vert in bm.verts:
-            if vert[mask] < 0.5:
-                bm.verts.remove(vert)
+        self.slider = VerticalSlider(center=None)
+        self.slider.setup_handler()
+
+        for face in bm.faces:
+            avg = sum(vert[mask] for vert in face.verts) / len(face.verts)
+            if avg < 0.5:
+                bm.faces.remove(face)
         remove = []
         dissolve = []
         for vert in bm.verts:
@@ -70,10 +151,15 @@ class MaskExtract(bpy.types.Operator):
 
         bmesh.ops.dissolve_verts(bm, verts=dissolve)
 
+        BoundaryPolish(bm).polish(iterations=50)
+        # boundary_loops_create(bm, loops=1, smoothing=6)
+
+
+
         self.obj = create_object_from_bm(bm,
                                          context.active_object.matrix_world,
                                          context.active_object.name + "_Shell")
-        bm.free()
+        self.bm = bm
         self.obj.select_set(True)
         context.view_layer.objects.active = self.obj
 
@@ -84,38 +170,58 @@ class MaskExtract(bpy.types.Operator):
         self.solidify.thickness = 0
         self.smooth = self.obj.modifiers.new(type="SMOOTH", name="SMOOTH")
         self.smooth.iterations = 5
+        self.smooth.factor = 0
 
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
+
+        mouse_co = Vector((event.mouse_region_x, event.mouse_region_y))
+        if not self.slider.center:
+            self.slider.center = mouse_co
+
         dist = context.region_data.view_distance
+        print(dist)
 
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
             self.click_count += 1
         elif event.type in {"ESC", "RIGHTMOUSE"}:
-            self.click_count = 3
+            self.click_count = 4
 
         if event.type == "MOUSEMOVE":
+
             delta = self.last_mouse - event.mouse_y
             self.last_mouse = event.mouse_y
             if self.click_count == 0:
-                amount = dist * delta * (0.0001 if event.shift else 0.002)
-                self.solidify.thickness += amount
+                scale = 700 / dist if not event.shift else 1400 / dist
+                self.solidify.thickness = self.slider.eval(mouse_co, "Thickness", unit_scale=scale)
                 self.solidify.thickness = max(self.solidify.thickness, 0)
 
             elif self.click_count == 1:
-                self.smooth.factor -= delta * (0.0001 if event.shift else 0.004)
+                scale = 100 if not event.shift else 300
+                self.smooth.factor = self.slider.eval(mouse_co, "Smooth", unit_scale=scale)
                 self.smooth.factor = max(self.smooth.factor, 0)
 
             elif self.click_count == 2:
-                amount = dist * delta * (0.0001 if event.shift else 0.002)
-                self.displace.strength -= amount
+                scale = 700 / dist if not event.shift else 1400 / dist
+                self.displace.strength = self.slider.eval(mouse_co, "Displace", unit_scale=scale)
 
             elif self.click_count >= 3:
-                bpy.ops.object.modifier_apply(modifier=self.displace.name)
-                bpy.ops.object.modifier_apply(modifier=self.solidify.name)
-                bpy.ops.object.modifier_apply(modifier=self.smooth.name)
+                if self.displace.strength != 0:
+                    bpy.ops.object.modifier_apply(modifier=self.displace.name)
+                else:
+                    self.obj.modifiers.remove(self.displace)
+                if self.solidify.thickness > 0:
+                    bpy.ops.object.modifier_apply(modifier=self.solidify.name)
+                else:
+                    self.obj.modifiers.remove(self.solidify)
+                if self.smooth.factor > 0:
+                    bpy.ops.object.modifier_apply(modifier=self.smooth.name)
+                else:
+                    self.obj.modifiers.remove(self.smooth)
+                self.bm.free()
+                self.slider.remove_handler()
                 return {"FINISHED"}
 
         return {"RUNNING_MODAL"}

@@ -32,14 +32,18 @@ def draw_remesh_tools(layout, context):
     layout.label(text="Remesh")
     layout.operator("sculpt_tool_kit.voxel_remesh")
     layout.operator("sculpt_tool_kit.decimate")
+    layout.operator("sculpt_tool_kit.s_smooth")
 
 
 def draw_booleans(layout, context):
     ob = context.active_object
     layout.label(text="Booleans")
-    layout.operator("sculpt_tool_kit.boolean", text="Union", icon="MOD_OPACITY").operation = "UNION"
-    layout.operator("sculpt_tool_kit.boolean", text="Difference", icon="MOD_BOOLEAN").operation = "DIFFERENCE"
-    layout.operator("sculpt_tool_kit.boolean", text="Intersect", icon="MOD_MASK").operation = "INTERSECT"
+    layout.operator("sculpt_tool_kit.boolean", text="Union",
+                    icon="MOD_OPACITY").operation = "UNION"
+    layout.operator("sculpt_tool_kit.boolean", text="Difference",
+                    icon="MOD_BOOLEAN").operation = "DIFFERENCE"
+    layout.operator("sculpt_tool_kit.boolean", text="Intersect",
+                    icon="MOD_MASK").operation = "INTERSECT"
     layout.operator("sculpt_tool_kit.slice_boolean", icon="MOD_MIRROR")
     layout.operator("sculpt_tool_kit.slash", icon="GREASEPENCIL")
 
@@ -55,8 +59,10 @@ class SCTK_PT_envelope_list(bpy.types.Panel):
         layout = self.layout
         for file, name, path in reversed(list(get_armature_filenames())):
             row = layout.row(align=True)
-            row.operator("sculpt_tool_kit.load_envelope_armature", text=name, text_ctxt=path).type = file
-            row.operator("sculpt_tool_kit.delete_envelope_armature", text="", text_ctxt=path, icon="CANCEL").name = name
+            row.operator("sculpt_tool_kit.load_envelope_armature",
+                         text=name, text_ctxt=path).type = file
+            row.operator("sculpt_tool_kit.delete_envelope_armature",
+                         text="", text_ctxt=path, icon="CANCEL").name = name
 
 
 def draw_envelope_builder(layout, context):
@@ -71,7 +77,8 @@ def get_brush_enum_data(self, context):
     n = 0
     for brush in bpy.data.brushes:
         if brush.use_paint_sculpt:
-            data.append((brush.name, brush.name, brush.name, brush_icon_get(brush), n))
+            data.append((brush.name, brush.name, brush.name,
+                         brush_icon_get(brush), n))
             n += 1
     return data
 
@@ -192,13 +199,15 @@ def draw_symmetry(layout, context):
         row.prop(sculpt, "use_symmetry_z", text="Z")
 
     layout.label(text="Symmetrize")
-    identifiers = [sign + axis for sign in ("POSITIVE_", "NEGATIVE_") for axis in "XYZ"]
+    identifiers = [
+        sign + axis for sign in ("POSITIVE_", "NEGATIVE_") for axis in "XYZ"]
     texts = [sign + axis for sign in ("+ ", "- ") for axis in "XYZ"]
     row = layout.row()
     for i in range(6):
         if i % 3 == 0:
             col = row.column()
-        col.operator("sculpt_tool_kit.symmetrize", text=texts[i]).axis = identifiers[i]
+        col.operator("sculpt_tool_kit.symmetrize",
+                     text=texts[i]).axis = identifiers[i]
 
 
 @register_class
@@ -268,9 +277,6 @@ class SCTK_MT_object_menu(bpy.types.Menu):
         box = col.box()
         draw_symmetry(box, context)
 
-        # box = pie.box()
-        # draw_symmetry(box, context)
-
         box = pie.box()
         draw_envelope_builder(box, context)
 
@@ -287,12 +293,13 @@ class SCKT_PT_panel_factory(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "Sculpt ToolKit"
 
-    drw_func = lambda layout, context: None
+    def drw_func(layout, context): return None
 
     @classmethod
     def create_panel(cls, label, draw_function, poll_function=None):
         class SCKT_PT_panel(cls):
-            bl_idname = "_PT_".join(["SCULPT_TOOL_KIT", label.replace(" ", "_").lower()])
+            bl_idname = "_PT_".join(
+                ["SCULPT_TOOL_KIT", label.replace(" ", "_").lower()])
             bl_label = label
 
             @classmethod
@@ -345,7 +352,8 @@ class NumberRowListener(bpy.types.Operator):
 
         if not self.running_get():
             context.window_manager.modal_handler_add(self)
-            self._timer = context.window_manager.event_timer_add(0.1, window=context.window)
+            self._timer = context.window_manager.event_timer_add(
+                0.1, window=context.window)
             self.running_set(True)
         else:
             self.running_set(False)
@@ -367,7 +375,8 @@ class NumberRowListener(bpy.types.Operator):
                             if brush.sckt_key_num == n:
                                 matching_brushes.append(brush)
                     if len(matching_brushes) == 1:
-                        bpy.ops.sculpt_tool_kit.brush_set(brush=matching_brushes[0].name)
+                        bpy.ops.sculpt_tool_kit.brush_set(
+                            brush=matching_brushes[0].name)
 
                     elif len(matching_brushes) > 1:
                         def draw(self, context):
@@ -375,7 +384,8 @@ class NumberRowListener(bpy.types.Operator):
                             for brush in matching_brushes:
                                 pie.operator("sculpt_tool_kit.brush_set").brush = brush.name
 
-                        context.window_manager.popup_menu_pie(event, draw, title="Pick Brush")
+                        context.window_manager.popup_menu_pie(
+                            event, draw, title="Pick Brush")
 
         return {"PASS_THROUGH"}
 
@@ -386,7 +396,8 @@ register_class(SCKT_PT_panel_factory.create_panel("Mask Tools", draw_mask_tools)
 register_class(SCKT_PT_panel_factory.create_panel("Remesh", draw_remesh_tools))
 register_class(SCKT_PT_panel_factory.create_panel("Symmetry", draw_symmetry))
 
-settings_file = path.join(path.dirname(path.realpath(__file__)), "brush_nums.json")
+settings_file = path.join(path.dirname(
+    path.realpath(__file__)), "brush_nums.json")
 
 
 @persistent
@@ -525,8 +536,6 @@ class SetShortcut(bpy.types.Operator):
             return {"CANCELLED"}
 
         return {"RUNNING_MODAL"}
-
-
 
 
 @register_class
