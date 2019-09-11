@@ -238,8 +238,8 @@ class MaskSplit(bpy.types.Operator):
         name="Keep",
         items=(("MASKED", "Masked", "Keep darkened parts"),
                ("UNMASKED", "Unmasked", "Keep light parts"),
-               ("NONE", "None", "Keep both sides in separate objects")),
-        default="NONE"
+               ("BOTH", "Both", "Keep both sides in separate objects")),
+        default="BOTH"
     )
 
     @classmethod
@@ -291,10 +291,12 @@ class MaskSplit(bpy.types.Operator):
         self.remove_half(bm, invert=invert)
         bm.to_mesh(ob.data)
 
-        if self.keep == "NONE":
-            self.remove_half(bm1, invert=True)
+        if self.keep == "BOTH":
             bpy.ops.object.duplicate()
+            self.remove_half(bm1, invert=True)
             bm1.to_mesh(context.active_object.data)
+            self.remove_half(bm)
+            bm.to_mesh(ob.data)
 
         return {"FINISHED"}
 
