@@ -4,7 +4,7 @@ import numpy as np
 from mathutils import Vector
 from os import path
 from .multifile import register_class
-from .draw_2d import VerticalSlider
+from .draw_2d import VerticalSlider, Draw2D
 
 DEFORM_RIG_PATH = path.join(path.dirname(path.realpath(__file__)), "Mask Deform Rig.blend")
 
@@ -32,6 +32,7 @@ def get_bm_and_mask(mesh):
 
     return bm, layer
 
+
 def boundary_loops_create(bm, loops=2, smoothing=6, smooth_depth=3):
     edges = [e for e in bm.edges if e.is_boundary]
     for _ in range(loops):
@@ -56,14 +57,15 @@ def boundary_loops_create(bm, loops=2, smoothing=6, smooth_depth=3):
         factor = min(smooth_depth, 0.5)
         smooth_depth -= 0.5
         bmesh.ops.smooth_vert(bm, verts=choosen_ones, use_axis_x=True,
-                                                use_axis_y=True,
-                                                use_axis_z=True,
-                                                factor=factor)
+                              use_axis_y=True,
+                              use_axis_z=True,
+                              factor=factor)
 
 
 class BoundaryPolish:
     def __init__(self, bm):
         bm.verts.ensure_lookup_table()
+
         class NeighborData:
             def __init__(self, vert, others):
                 self.vert = vert
@@ -154,8 +156,6 @@ class MaskExtract(bpy.types.Operator):
         BoundaryPolish(bm).polish(iterations=50)
         # boundary_loops_create(bm, loops=1, smoothing=6)
 
-
-
         self.obj = create_object_from_bm(bm,
                                          context.active_object.matrix_world,
                                          context.active_object.name + "_Shell")
@@ -182,7 +182,6 @@ class MaskExtract(bpy.types.Operator):
             self.slider.center = mouse_co
 
         dist = context.region_data.view_distance
-        print(dist)
 
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
             self.click_count += 1
@@ -364,27 +363,56 @@ class MaskDeformAdd(bpy.types.Operator):
         md.object = data_to.objects[0]
         data_to.objects[0].hide_viewport = True
         data_to.objects[1].location = location
-        ob["MASK_RIG"] = list(data_to.objects)
-        ob["MASK_RIG"].append(md.name)
+        ob["MASK_RIG"] = list(data_to.objects) + [md.name]
 
     def execute(self, context):
         bpy.ops.object.mode_set(mode="OBJECT")
-        ob = context.active_object
-        bm, mask = get_bm_and_mask(ob.data)
-        vg = ob.vertex_groups.new(name="MASK_TO_VG")
+        self.ob = context.active_object
+        bm, mask = get_bm_and_mask(self.ob.data)
+        vg = self.ob.vertex_groups.new(name="MASK_TO_VG")
         avg_location = Vector()
         total = 0
         for vert in bm.verts:
             vg.add([vert.index], weight=vert[mask], type="REPLACE")
-            avg_location += vert.co * vert[mask]
-            total += vert[mask]
+            f = vert[mask]
+            f = max(0, f * (1 - f)) + 0.001 * f
+            avg_location += vert.co * f
+            total += f
         try:
             avg_location /= total
-            self.create_rig(context, ob, vg, avg_location)
+            self.create_rig(context, self.ob, vg, avg_location)
+            self.draw_callback_px = Draw2D()
+            self.draw_callback_px.setup_handler()
+            self.draw_callback_px.add_text("[Return] = Finish, [ESC] = Cancell",
+                                           location=Vector((50, 50)),
+                                           size=15,
+                                           color=(1, 0.5, 0, 1))
+            context.window_manager.modal_handler_add(self)
+            return {"RUNNING_MODAL"}
+
         except ZeroDivisionError:
             self.report(type={"ERROR"}, message="Object does not contain any mask")
+            return {"CANCELLED"}
 
-        return {"FINISHED"}
+    def modal(self, context, event):
+        if event.type == "RET":
+            if self.remove_rig(context, apply=True):
+                self.draw_callback_px.remove_handler()
+                return {"FINISHED"}
+
+        if event.type == "ESC":
+            if self.remove_rig(context, apply=False):
+                self.draw_callback_px.remove_handler()
+                return {"CANCELLED"}
+
+        return {"PASS_THROUGH"}
+
+    def remove_rig(self, context, apply):
+        context.view_layer.objects.active = self.ob
+        self.ob.select_set(True)
+        bpy.ops.sculpt_tool_kit.mask_deform_remove(apply=apply)
+        return True
+
 
 
 @register_class

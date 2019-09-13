@@ -74,6 +74,7 @@ class Slice(bpy.types.Operator):
 
     def execute(self, context):
         knife = context.active_object
+        knife.select_set(False)
         objs = [obj for obj in context.view_layer.objects.selected if obj.type == "MESH" and obj is not knife]
 
         solid = knife.modifiers.new(type="SOLIDIFY", name="Solid")
