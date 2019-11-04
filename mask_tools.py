@@ -78,6 +78,7 @@ class BoundaryPolish:
                     self.disp_vec += other.co
                 self.disp_vec /= len(self.others)
                 self.disp_vec = self.vert.co - self.disp_vec
+                self.disp_vec -= self.vert.normal.dot(self.disp_vec) * self.vert.normal
 
         self.boundary_mapping = {}
         for vert in bm.verts:
@@ -98,6 +99,7 @@ class BoundaryPolish:
         for _ in range(iterations):
             for dt in self.boundary_mapping.values():
                 dt.update_vec()
+
             for vert, dt in self.boundary_mapping.items():
                 avg_vec = Vector()
                 avg_vec -= dt.disp_vec * 0.5
