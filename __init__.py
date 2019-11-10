@@ -9,7 +9,7 @@ bl_info = {
     "name": "Sculpt Tool Kit",
     "description": "Sculpting tools to improve workflow",
     "author": "Jean Da Costa Machado",
-    "version": (1, 28, 1),
+    "version": (1, 29, 2),
     "blender": (2, 80, 0),
     "wiki_url": "",
     "category": "Sculpt",
