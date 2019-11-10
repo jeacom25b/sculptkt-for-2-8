@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 from .multifile import register_class
 
 
@@ -23,6 +24,8 @@ class Boolean(bpy.types.Operator):
         default=True
     )
 
+    fix_ngons: bpy.props.FloatProperty(name="Fix Ngons", default=True)
+
     @classmethod
     def poll(cls, context):
         if context.active_object and context.active_object.type == "MESH":
@@ -39,6 +42,13 @@ class Boolean(bpy.types.Operator):
             md.object = obj
             md.operation = self.operation
             bpy.ops.object.modifier_apply(modifier=md.name)
+
+        if self.fix_ngons:
+            bm = bmesh.new()
+            bm.from_mesh(active.data)
+            n_gons = [face for face in bm.faces if len(face.verts) > 4]
+            bmesh.ops.triangulate(bm, faces=n_gons)
+            bm.to_mesh(active.data)
 
         if self.remove_objects:
             for obj in objects:
