@@ -192,7 +192,7 @@ class Decimate(bpy.types.Operator):
         return {"FINISHED"}
 
 
-@register_class
+# @register_class
 class BoundaryLockedRemesh(bpy.types.Operator):
     bl_idname = "sculpt_tool_kit.bdremesh"
     bl_label = "Boundary Locked Remesh"
@@ -200,7 +200,7 @@ class BoundaryLockedRemesh(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     bm = None
-    Iterations = bpy.props.IntProperty(name="Iterations", default=15)
+    Iterations: bpy.props.IntProperty(name="Iterations", default=15)
 
     def pool(self, context):
         return context.active_object and context.active_object.type == "MESH"
