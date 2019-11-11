@@ -309,10 +309,10 @@ class EllipseCut(PolyCut):
                     self.points.pop(0)
                     return {"RUNNING_MODAL"}
 
-        if event.type == "WHEELUPMOUSE":
+        if event.type in {"WHEELUPMOUSE", "PAGE_UP", "NUMPAD_PLUS", "PLUS"} and event.value == "PRESS":
             self.circle_resolution += 1
 
-        elif event.type == "WHEELDOWNMOUSE":
+        elif event.type in {"WHEELDOWNMOUSE", "PAGE_DOWN", "NUMPAD_MINUS", "MINUS"} and event.value == "PRESS":
             self.circle_resolution -= 1
 
         if self.circle_resolution < 3:
@@ -385,10 +385,10 @@ class SplineCut(PolyCut):
                     self.undo = False
                     return {"RUNNING_MODAL"}
 
-        if event.type == "WHEELUPMOUSE":
+        if event.type in {"WHEELUPMOUSE", "PAGE_UP", "NUMPAD_PLUS", "PLUS"} and event.value == "PRESS":
             self.spline_resolution += 1
 
-        elif event.type == "WHEELDOWNMOUSE":
+        elif event.type in {"WHEELDOWNMOUSE", "PAGE_DOWN", "NUMPAD_MINUS", "MINUS"} and event.value == "PRESS":
             self.spline_resolution -= 1
 
         if self.spline_resolution > 5:
@@ -459,7 +459,7 @@ class SplineCut(PolyCut):
 @register_class
 class Slash(bpy.types.Operator):
     bl_idname = "sculpt_tool_kit.slash"
-    bl_label = "Slash Cuter"
+    bl_label = "Slash Cutter"
     bl_description = "Draw shapes to slice"
     bl_options = {"REGISTER", "UNDO"}
     default_tool = PolyCut

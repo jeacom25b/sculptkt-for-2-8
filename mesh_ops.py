@@ -10,7 +10,7 @@ class SSmooth(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     repeat: bpy.props.IntProperty(name="Repeat", default=10, min=1)
-    factor: bpy.props.FloatProperty(name="Factor", default=0.5, min=0, max=1)
+    factor: bpy.props.FloatProperty(name="Factor", default=0.5, min=0.0001, max=1)
     recovery_repeat: bpy.props.IntProperty(name="Recovery Repeat", default=2, min=1)
 
     @classmethod
