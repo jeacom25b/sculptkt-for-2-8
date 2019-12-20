@@ -365,6 +365,7 @@ class MaskDeformAdd(bpy.types.Operator):
         md.object = data_to.objects[0]
         data_to.objects[0].hide_viewport = True
         data_to.objects[1].location = location
+        data_to.objects[1].scale = (radius,) * 3
         ob["MASK_RIG"] = list(data_to.objects) + [md.name]
 
     def execute(self, context):
@@ -380,9 +381,18 @@ class MaskDeformAdd(bpy.types.Operator):
             f = max(0, f * (1 - f)) + 0.001 * f
             avg_location += vert.co * f
             total += f
+        radius = 0
+
         try:
             avg_location /= total
-            self.create_rig(context, self.ob, vg, avg_location)
+            for vert in bm.verts:
+                f = vert[mask]
+                f = max(0, f * (1 - f)) + 0.001 * f
+                radius += (vert.co - avg_location).length * f
+            radius /= total
+            radius *= sum(self.ob.scale) / 3 * 1.5
+            avg_location = self.ob.matrix_world @ avg_location
+            self.create_rig(context, self.ob, vg, avg_location, radius)
             self.draw_callback_px = Draw2D()
             self.draw_callback_px.setup_handler()
             self.draw_callback_px.add_text("[Return] = Finish, [ESC] = Cancell",
