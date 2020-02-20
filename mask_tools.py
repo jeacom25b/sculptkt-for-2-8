@@ -459,7 +459,7 @@ class MaskDecimate(bpy.types.Operator):
         bm, mask = get_bm_and_mask(ob.data)
         for vert in bm.verts:
             vg.add([vert.index], weight=vert[mask], type="REPLACE")
-        ob.vertex_groups.active = vg
+        ob.vertex_groups.active_index = vg.index
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.mesh.decimate(ratio=self.ratio, use_vertex_group=True, vertex_group_factor=10)
