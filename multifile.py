@@ -1,70 +1,95 @@
 import bpy
 import importlib
 import traceback
-import os
-import sys
-
-class ReloadStorage:
-    bucket = {}
-    @classmethod
-    def get(cls, key):
-        if key not in cls.bucket:
-            cls.bucket[key] = []
-        return cls.bucket[key]
-
-_imported_modules = {}
-_modules = set()
-_register_classes = set()
-_register_functions = set()
-_unregister_functions = set()
 
 
-def add_module(module_name):
-    _modules.add(module_name)
+class RegisterStuff:
+    all_classes = []
+    register_fncs = []
+    unregister_fncs = []
+    imported_modules = []
+    registered_classes = []
+    module_names = []
+
+    def __init__(self):
+        raise RuntimeError("cant instantiate")
+
+    def clear_classes():
+        RegisterStuff.all_classes.clear()
+        RegisterStuff.register_fncs.clear()
+        RegisterStuff.unregister_fncs.clear()
 
 
 def register_class(cls):
-    _register_classes.add(cls)
+    RegisterStuff.all_classes.append(cls)
     return cls
 
 
 def register_function(func):
-    _register_functions.add(func)
+    RegisterStuff.register_fncs.append(func)
     return func
 
 
 def unregister_function(func):
-    _unregister_functions.add(func)
+    RegisterStuff.unregister_fncs.append(func)
     return func
 
-def import_modules():
-    _register_functions.clear()
-    _unregister_functions.clear()
-    _register_classes.clear()
-
-    for imported_module in _imported_modules.values():
-        importlib.reload(imported_module)
-        print('Reloading:', imported_module)
-
-    for module_name in _modules:
-        try:
-            fake_globals = {'__name__': __name__}
-            exec(f'from . import {module_name}', fake_globals)
-            _imported_modules[module_name] = (fake_globals[module_name])
-
-        except Exception as e:
-            raise e
 
 def register():
-    for item in _register_classes:
-        bpy.utils.register_class(item)
+    print('register')
+    for cls in RegisterStuff.all_classes:
+        bpy.utils.register_class(cls)
+        print('register', cls)
+        RegisterStuff.registered_classes.append(cls)
 
-    for item in _register_functions:
-        item()
+    for func in RegisterStuff.register_fncs:
+        func()
+
 
 def unregister():
-    for item in _register_classes:
-        bpy.utils.unregister_class(item)
+    print('unregister')
+    for cls in RegisterStuff.registered_classes:
+        print('unregister', cls)
+        bpy.utils.unregister_class(cls)
 
-    for item in _unregister_functions:
-        item()
+    RegisterStuff.registered_classes.clear()
+
+    for func in RegisterStuff.unregister_fncs:
+        func()
+
+
+def import_modules():
+    RegisterStuff.clear_classes()
+
+    if RegisterStuff.imported_modules:
+        print('reload')
+        unregister()
+        for module in RegisterStuff.imported_modules:
+            importlib.reload(module)
+        RegisterStuff.imported_modules.clear()
+
+    for mdname in RegisterStuff.module_names:
+        try:
+            exec(f'from . import {mdname}')
+            RegisterStuff.imported_modules.append(locals()[mdname])
+            print('importing', locals()[mdname])
+        except Exception as e:
+            print(e)
+            raise e
+
+def add_modules(modules):
+    for modname in modules:
+        if modname not in RegisterStuff.module_names:
+            RegisterStuff.module_names.append(modname)
+
+    import_modules()
+
+
+__all__ = [
+    'register_class',
+    'register_function',
+    'unregister_function',
+    'register',
+    'unregister',
+    'maybe_reload',
+]

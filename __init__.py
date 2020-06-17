@@ -3,7 +3,7 @@ from random import choice
 import traceback
 import importlib
 
-from .multifile import register, unregister, add_module, import_modules, register_class
+from .multifile import register, unregister, add_modules, import_modules, register_class
 
 bl_info = {
     'name': 'Sculpt Tool Kit',
@@ -15,13 +15,13 @@ bl_info = {
     'category': 'Sculpt',
     'location': '3D View > Properties (shortcut : N) > SculpTKt tab'}
 
-add_module('booleans')
-add_module('draw_2d')
-add_module('envelope_builder')
-add_module('interface')
-add_module('mask_tools')
-add_module('mesh_ops')
-add_module('remesh')
-add_module('slash_cuter')
-add_module('symmetry_tools')
+add_modules(['booleans',
+            'draw_2d',
+            'envelope_builder',
+            'interface',
+            'mask_tools',
+            'mesh_ops',
+            'remesh',
+            'slash_cuter',
+            'symmetry_tools'])
 import_modules()

@@ -2,7 +2,7 @@ import os
 import bpy
 import json
 from os import path
-from .multifile import register_class, register_function, unregister_function, ReloadStorage
+from .multifile import register_class, register_function, unregister_function
 from .envelope_builder import get_armature_filenames
 from .keymap_items import key_types
 from bpy.app.handlers import persistent
@@ -436,10 +436,10 @@ class KeyNumSave(bpy.types.Operator):
         key_num_save(context.scene)
         return {'FINISHED'}
 
+addon_keymaps = []
 
 def set_keymap():
     prefs = bpy.context.preferences.addons[ADDON_NAME].preferences
-    addon_keymaps = ReloadStorage.get('keymaps')
     kcfg = bpy.context.window_manager.keyconfigs.addon
     if kcfg:
         km = kcfg.keymaps.new(name='Sculpt', space_type='EMPTY')
@@ -464,7 +464,6 @@ def set_keymap():
 
 
 def remove_keymap():
-    addon_keymaps = ReloadStorage.get('keymaps')
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
 
