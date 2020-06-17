@@ -9,7 +9,7 @@ from random import shuffle, random
 
 
 def is_mesh_pool(context):
-    return context.active_object and context.active_object.type == "MESH"
+    return context.active_object and context.active_object.type == 'MESH'
 
 
 def random_vector():
@@ -39,27 +39,27 @@ def edge_length_squared(edge):
 
 @register_class
 class VoxelRemesh(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.voxel_remesh"
-    bl_label = "Voxel Remesh"
-    bl_description = "Remesh using remesh modifier."
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.voxel_remesh'
+    bl_label = 'Voxel Remesh'
+    bl_description = 'Remesh using remesh modifier.'
+    bl_options = {'REGISTER', 'UNDO'}
 
     depth: bpy.props.IntProperty(
-        name="Depth",
-        description="The resolution relative to object bounding box",
+        name='Depth',
+        description='The resolution relative to object bounding box',
         min=1,
         default=6
     )
 
     clean_topology: bpy.props.BoolProperty(
-        name="Clean Topology",
-        description="Run a cleaning algorith to make topology simpler and smoother",
+        name='Clean Topology',
+        description='Run a cleaning algorith to make topology simpler and smoother',
         default=True
     )
 
     smooth_shading: bpy.props.BoolProperty(
-        name="Smooth Shading",
-        description="Add Smooth Shading",
+        name='Smooth Shading',
+        description='Add Smooth Shading',
         default=False
     )
 
@@ -125,21 +125,21 @@ class VoxelRemesh(bpy.types.Operator):
         return is_mesh_pool(context)
 
     def invoke(self, context, event):
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.ed.undo_push()
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
         for ob in context.view_layer.objects.selected:
-            if not ob.type == "MESH":
+            if not ob.type == 'MESH':
                 continue
             context.view_layer.objects.active = ob
             bm = bmesh.new()
             bm.from_mesh(ob.data)
             tree = BVHTree.FromBMesh(bm)
-            md = ob.modifiers.new(type="REMESH", name="Remesh")
-            md.mode = "SMOOTH"
-            md.mode = "SMOOTH"
+            md = ob.modifiers.new(type='REMESH', name='Remesh')
+            md.mode = 'SMOOTH'
+            md.mode = 'SMOOTH'
             md.use_remove_disconnected = False
             md.octree_depth = self.depth
             bpy.ops.object.modifier_apply(modifier=md.name)
@@ -153,19 +153,19 @@ class VoxelRemesh(bpy.types.Operator):
             bm.to_mesh(ob.data)
         if self.smooth_shading:
             bpy.ops.object.shade_smooth()
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 @register_class
 class Decimate(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.decimate"
-    bl_label = "Simple Decimate"
-    bl_description = "Simple uniform decimation"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.decimate'
+    bl_label = 'Simple Decimate'
+    bl_description = 'Simple uniform decimation'
+    bl_options = {'REGISTER', 'UNDO'}
 
     ratio: bpy.props.FloatProperty(
-        name="Ratio",
-        description="Percentage to decimate",
+        name='Ratio',
+        description='Percentage to decimate',
         min=0,
         max=1,
         default=0.5
@@ -176,7 +176,7 @@ class Decimate(bpy.types.Operator):
         return is_mesh_pool(context)
 
     def invoke(self, context, event):
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.ed.undo_push()
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
@@ -184,26 +184,26 @@ class Decimate(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.ed.undo_push()
         ob = context.active_object
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.decimate(ratio=self.ratio)
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
 
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 # @register_class
 class BoundaryLockedRemesh(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.bdremesh"
-    bl_label = "Boundary Locked Remesh"
-    bl_description = "Remesh meshes with boundaries"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.bdremesh'
+    bl_label = 'Boundary Locked Remesh'
+    bl_description = 'Remesh meshes with boundaries'
+    bl_options = {'REGISTER', 'UNDO'}
 
     bm = None
-    Iterations: bpy.props.IntProperty(name="Iterations", default=15)
+    Iterations: bpy.props.IntProperty(name='Iterations', default=15)
 
     def pool(self, context):
-        return context.active_object and context.active_object.type == "MESH"
+        return context.active_object and context.active_object.type == 'MESH'
 
     def execute(self, context):
         ob = context.active_object
@@ -214,7 +214,7 @@ class BoundaryLockedRemesh(bpy.types.Operator):
             self.edge_length_equalize(bm)
         bm.to_mesh(ob.data)
         bpy.context.area.tag_redraw()
-        return {"FINISHED"}
+        return {'FINISHED'}
 
     @staticmethod
     def edge_length_soften_from_bd(bm):

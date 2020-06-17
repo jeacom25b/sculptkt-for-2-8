@@ -43,26 +43,26 @@ def cut(context, points, thickness=0.0001, distance_multiplier=10, ciclic=True):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.solidify(bm, geom=list(bm.faces), thickness=thickness)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    mesh = bpy.data.meshes.new(name="cuter_mesh")
+    mesh = bpy.data.meshes.new(name='cuter_mesh')
     bm.to_mesh(mesh)
-    cuter = bpy.data.objects.new(name="cuter_object", object_data=mesh)
+    cuter = bpy.data.objects.new(name='cuter_object', object_data=mesh)
     context.scene.collection.objects.link(cuter)
 
     for ob in context.view_layer.objects.selected:
         context.view_layer.objects.active = ob
-        md = ob.modifiers.new(type="BOOLEAN", name="Cut")
+        md = ob.modifiers.new(type='BOOLEAN', name='Cut')
         md.object = cuter
-        md.operation = "DIFFERENCE"
+        md.operation = 'DIFFERENCE'
         bpy.ops.object.modifier_apply(modifier=md.name)
         bm = bmesh.new()
         bm.from_mesh(ob.data)
         bmesh.ops.holes_fill(bm, edges=bm.edges)
         bmesh.ops.triangulate(bm, faces=[face for face in bm.faces if len(face.verts) > 4])
         bm.to_mesh(ob.data)
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.separate(type="LOOSE")
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.separate(type='LOOSE')
+        bpy.ops.object.mode_set(mode='OBJECT')
 
     bpy.data.objects.remove(cuter)
     bpy.data.meshes.remove(mesh)
@@ -86,7 +86,7 @@ class PolyCut:
         self.points = []
 
         self.ciclic = False
-        self.mode = "DRAW"
+        self.mode = 'DRAW'
         self.left = False
         self.right = False
         self.ctrl = False
@@ -105,30 +105,30 @@ class PolyCut:
 
         self.ctrl = event.ctrl
 
-        if event.type == "MOUSEMOVE" and event.value == "RELEASE":
+        if event.type == 'MOUSEMOVE' and event.value == 'RELEASE':
             self.left = False
             self.right = False
 
-        if event.type == "LEFTMOUSE":
-            if event.value == "PRESS":
+        if event.type == 'LEFTMOUSE':
+            if event.value == 'PRESS':
                 self.left = True
-            elif event.value == "RELEASE":
+            elif event.value == 'RELEASE':
                 self.left = False
 
-        if event.type == "RIGHTMOUSE":
-            if event.value == "PRESS":
+        if event.type == 'RIGHTMOUSE':
+            if event.value == 'PRESS':
                 self.right = True
-            elif event.value == "RELEASE":
+            elif event.value == 'RELEASE':
                 self.right = False
 
-        if event.value == "PRESS":
-            if event.type == "C":
+        if event.value == 'PRESS':
+            if event.type == 'C':
                 self.ciclic = not self.ciclic
 
-            elif event.type == "G" and not self.left:
-                self.mode = "MOVE" if self.mode == "DRAW" else "MOVE"
+            elif event.type == 'G' and not self.left:
+                self.mode = 'MOVE' if self.mode == 'DRAW' else 'MOVE'
 
-            elif event.type == "Z" and self.ctrl:
+            elif event.type == 'Z' and self.ctrl:
                 self.undo = True
 
         self.last_co = self.mouse_co
@@ -148,36 +148,36 @@ class PolyCut:
                 self.points.pop(-1)
             self.undo = False
 
-        elif self.left and self.mode == "DRAW":
+        elif self.left and self.mode == 'DRAW':
 
             if not self.points:
                 self.points.append(self.mouse_co)
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
             dist = (self.mouse_co - self.points[-1]).length
             if dist > self.confirm_distance:
                 self.points.append(self.mouse_co)
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
-            elif event.type == "LEFTMOUSE" and event.value == "PRESS" and dist < self.confirm_distance:
+            elif event.type == 'LEFTMOUSE' and event.value == 'PRESS' and dist < self.confirm_distance:
                 self.cut(context)
-                return {"FINISHED"}
+                return {'FINISHED'}
 
-        elif self.mode == "MOVE":
+        elif self.mode == 'MOVE':
             self.translate_points(self.mouse_co - self.last_co)
             if self.left:
-                self.mode = "DRAW"
+                self.mode = 'DRAW'
 
-            return {"RUNNING_MODAL"}
+            return {'RUNNING_MODAL'}
 
-        elif event.type == "RET":
+        elif event.type == 'RET':
             self.cut(context)
-            return {"FINISHED"}
+            return {'FINISHED'}
 
-        if self.right or event.type == "ESC":
-            return {"CANCELLED"}
+        if self.right or event.type == 'ESC':
+            return {'CANCELLED'}
 
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     def translate_points(self, direction):
         for i in range(len(self.points)):
@@ -211,7 +211,7 @@ class PolyCut:
             text_col[3] = (t + 1) / 2
 
             if cut and not self.left and len(self.points) > 1:
-                self.renderer.add_text("Click to Cut", self.points[-1] + Vector((5, 5)), 15, text_col)
+                self.renderer.add_text('Click to Cut', self.points[-1] + Vector((5, 5)), 15, text_col)
 
             self.renderer.add_line(self.points[-1], self.mouse_co, line_col)
             self.renderer.add_circle(self.mouse_co, 5, 6, color=line_col)
@@ -232,31 +232,31 @@ class RectangleCut(PolyCut):
     def handle_event(self, context, event):
         self.update_states(event)
 
-        if self.mode == "DRAW":
+        if self.mode == 'DRAW':
 
-            if (self.left or event.type == "RET") and event.value == "PRESS":
-                if not event.type == "MOUSEMOVE":
-                    print("append Point")
+            if (self.left or event.type == 'RET') and event.value == 'PRESS':
+                if not event.type == 'MOUSEMOVE':
+                    print('append Point')
                     self.points.append(self.mouse_co)
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
             if len(self.points) >= 2:
                 self.cut(context)
-                return {"FINISHED"}
+                return {'FINISHED'}
 
             elif self.undo and self.points:
                 self.points.pop(-1)
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
-        elif self.mode == "MOVE":
+        elif self.mode == 'MOVE':
             self.translate_points(self.mouse_co - self.last_co)
             if self.left:
-                self.mode = "DRAW"
+                self.mode = 'DRAW'
 
-        if self.left or event.type == "ESC":
-            return {"CANCELLED"}
+        if self.left or event.type == 'ESC':
+            return {'CANCELLED'}
 
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     def get_rect_corners(self, pa, pb):
         x_zes = [pa[0], pb[0]]
@@ -293,41 +293,41 @@ class EllipseCut(PolyCut):
 
     def handle_event(self, context, event):
         self.update_states(event)
-        if self.mode == "DRAW":
+        if self.mode == 'DRAW':
 
-            if (self.left or event.type == "RET") and event.value == "PRESS":
-                if not event.type == "MOUSEMOVE":
+            if (self.left or event.type == 'RET') and event.value == 'PRESS':
+                if not event.type == 'MOUSEMOVE':
                     self.points.append(self.true_mouse_co)
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
             if len(self.points) > 1:
                 self.cut(context)
-                return {"FINISHED"}
+                return {'FINISHED'}
 
             elif self.undo:
                 if self.points:
                     self.points.pop(0)
-                    return {"RUNNING_MODAL"}
+                    return {'RUNNING_MODAL'}
 
-        if event.type in {"WHEELUPMOUSE", "PAGE_UP", "NUMPAD_PLUS", "PLUS"} and event.value == "PRESS":
+        if event.type in {'WHEELUPMOUSE', 'PAGE_UP', 'NUMPAD_PLUS', 'PLUS'} and event.value == 'PRESS':
             self.circle_resolution += 1
 
-        elif event.type in {"WHEELDOWNMOUSE", "PAGE_DOWN", "NUMPAD_MINUS", "MINUS"} and event.value == "PRESS":
+        elif event.type in {'WHEELDOWNMOUSE', 'PAGE_DOWN', 'NUMPAD_MINUS', 'MINUS'} and event.value == 'PRESS':
             self.circle_resolution -= 1
 
         if self.circle_resolution < 3:
             self.circle_resolution = 3
 
-        if self.mode == "MOVE":
+        if self.mode == 'MOVE':
             self.translate_points(self.mouse_co - self.last_co)
             if self.left:
-                self.mode = "DRAW"
-            return {"RUNNING_MODAL"}
+                self.mode = 'DRAW'
+            return {'RUNNING_MODAL'}
 
-        if self.left or event.type == "ESC":
-            return {"CANCELLED"}
+        if self.left or event.type == 'ESC':
+            return {'CANCELLED'}
 
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     def get_circle_points(self, a, b):
         d = a - b
@@ -368,42 +368,42 @@ class SplineCut(PolyCut):
 
     def handle_event(self, context, event):
         self.update_states(event)
-        if self.mode == "DRAW":
-            if (self.left or event.type == "RET") and event.value == "PRESS":
-                if not event.type == "MOUSEMOVE":
+        if self.mode == 'DRAW':
+            if (self.left or event.type == 'RET') and event.value == 'PRESS':
+                if not event.type == 'MOUSEMOVE':
                     self.points.append(self.mouse_co)
                     pass
-                return {"RUNNING_MODAL"}
+                return {'RUNNING_MODAL'}
 
-            if event.type == "RET":
+            if event.type == 'RET':
                 self.cut(context)
-                return {"FINISHED"}
+                return {'FINISHED'}
 
             elif self.undo:
                 if self.points:
                     self.points.pop(-1)
                     self.undo = False
-                    return {"RUNNING_MODAL"}
+                    return {'RUNNING_MODAL'}
 
-        if event.type in {"WHEELUPMOUSE", "PAGE_UP", "NUMPAD_PLUS", "PLUS"} and event.value == "PRESS":
+        if event.type in {'WHEELUPMOUSE', 'PAGE_UP', 'NUMPAD_PLUS', 'PLUS'} and event.value == 'PRESS':
             self.spline_resolution += 1
 
-        elif event.type in {"WHEELDOWNMOUSE", "PAGE_DOWN", "NUMPAD_MINUS", "MINUS"} and event.value == "PRESS":
+        elif event.type in {'WHEELDOWNMOUSE', 'PAGE_DOWN', 'NUMPAD_MINUS', 'MINUS'} and event.value == 'PRESS':
             self.spline_resolution -= 1
 
         if self.spline_resolution > 5:
             self.spline_resolution = 5
 
-        if self.mode == "MOVE":
+        if self.mode == 'MOVE':
             self.translate_points(self.mouse_co - self.last_co)
             if self.left:
-                self.mode = "DRAW"
-            return {"RUNNING_MODAL"}
+                self.mode = 'DRAW'
+            return {'RUNNING_MODAL'}
 
-        if self.left or event.type == "ESC":
-            return {"CANCELLED"}
+        if self.left or event.type == 'ESC':
+            return {'CANCELLED'}
 
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     @staticmethod
     def subdiv_points(points):
@@ -458,24 +458,24 @@ class SplineCut(PolyCut):
 
 @register_class
 class Slash(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.slash"
-    bl_label = "Slash Cutter"
-    bl_description = "Draw shapes to slice"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.slash'
+    bl_label = 'Slash Cutter'
+    bl_description = 'Draw shapes to slice'
+    bl_options = {'REGISTER', 'UNDO'}
     default_tool = PolyCut
     _timer = None
 
     help_text = [
-        "Mode: PolyLine = [D], Ellipse = [E], Rectangle = [R], Spline = [S]",
-        "Move Around: [G]",
-        "Toggle Ciclic: [C]",
-        "Regular Mode: [Ctrl]",
-        "Undo: [Ctrl] + [Z]"
+        'Mode: PolyLine = [D], Ellipse = [E], Rectangle = [R], Spline = [S]',
+        'Move Around: [G]',
+        'Toggle Ciclic: [C]',
+        'Regular Mode: [Ctrl]',
+        'Undo: [Ctrl] + [Z]'
     ]
 
     @classmethod
     def poll(cls, context):
-        return context.active_object and context.active_object.type == "MESH"
+        return context.active_object and context.active_object.type == 'MESH'
 
     @classmethod
     def set_default_tool(cls, tool):
@@ -488,23 +488,23 @@ class Slash(bpy.types.Operator):
         self.left = False
         self.right = False
         context.window_manager.modal_handler_add(self)
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
-        if event.value == "PRESS":
-            if event.type == "E":
+        if event.value == 'PRESS':
+            if event.type == 'E':
                 self.tool = EllipseCut(self.draw_callback_px)
                 self.set_default_tool(EllipseCut)
 
-            elif event.type == "D":
+            elif event.type == 'D':
                 self.tool = PolyCut(self.draw_callback_px)
                 self.set_default_tool(PolyCut)
 
-            elif event.type == "R":
+            elif event.type == 'R':
                 self.tool = RectangleCut(self.draw_callback_px)
                 self.set_default_tool(RectangleCut)
 
-            elif event.type == "S":
+            elif event.type == 'S':
                 self.tool = SplineCut(self.draw_callback_px)
                 self.set_default_tool(SplineCut)
 
@@ -517,6 +517,6 @@ class Slash(bpy.types.Operator):
 
         context.area.tag_redraw()
 
-        if ret == {"FINISHED"} or ret == {"CANCELLED"}:
+        if ret == {'FINISHED'} or ret == {'CANCELLED'}:
             self.draw_callback_px.remove_handler()
         return ret

@@ -22,7 +22,7 @@ class Draw2D:
         self.text = []
         self.thickness = 2
         self.font_shadow = (0, 0, 0, 0.5)
-        self.shader = gpu.shader.from_builtin("2D_FLAT_COLOR")
+        self.shader = gpu.shader.from_builtin('2D_FLAT_COLOR')
         self.batch_redraw = False
         self.batch = None
         self.handler = None
@@ -64,14 +64,14 @@ class Draw2D:
 
     def update_batch(self):
         self.batch_redraw = False
-        self.batch = batch.batch_for_shader(self.shader, "LINES",
-                                            {"pos": self.vertices, "color": self.colors})
+        self.batch = batch.batch_for_shader(self.shader, 'LINES',
+                                            {'pos': self.vertices, 'color': self.colors})
 
     def setup_handler(self):
-        self.handler = bpy.types.SpaceView3D.draw_handler_add(self, (), "WINDOW", "POST_PIXEL")
+        self.handler = bpy.types.SpaceView3D.draw_handler_add(self, (), 'WINDOW', 'POST_PIXEL')
 
     def remove_handler(self):
-        bpy.types.SpaceView3D.draw_handler_remove(self.handler, "WINDOW")
+        bpy.types.SpaceView3D.draw_handler_remove(self.handler, 'WINDOW')
 
     def draw(self):
         bgl.glEnable(bgl.GL_BLEND)
@@ -98,7 +98,7 @@ class VerticalSlider(Draw2D):
         self.center = center
         self.eval_co = center
 
-    def eval(self, co, text="Test", color=Vector((1, 0, 0, 0.5)), unit_scale=30, digits=3):
+    def eval(self, co, text='Test', color=Vector((1, 0, 0, 0.5)), unit_scale=30, digits=3):
         x = Vector((1, 0))
         self.eval_co = co.copy()
         self.eval_co.x = self.center.x
@@ -107,5 +107,5 @@ class VerticalSlider(Draw2D):
         self.add_line(co, self.eval_co, color)
         self.add_line(self.center + x * 10, self.center - x * 10, color)
         val = (self.eval_co.y - self.center.y) / unit_scale
-        self.add_text(f"{text:} {round(val, digits)}", self.eval_co + Vector((10, 10)), 20, color)
+        self.add_text(f'{text:} {round(val, digits)}', self.eval_co + Vector((10, 10)), 20, color)
         return val

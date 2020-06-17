@@ -6,10 +6,10 @@ from os import path
 from .multifile import register_class
 from .draw_2d import VerticalSlider, Draw2D
 
-DEFORM_RIG_PATH = path.join(path.dirname(path.realpath(__file__)), "Mask Deform Rig.blend")
+DEFORM_RIG_PATH = path.join(path.dirname(path.realpath(__file__)), 'Mask Deform Rig.blend')
 
 
-def create_object_from_bm(bm, matrix_world, name="new_mesh", set_active=False):
+def create_object_from_bm(bm, matrix_world, name='new_mesh', set_active=False):
     mesh = bpy.data.meshes.new(name=name)
     bm.to_mesh(mesh)
     obj = bpy.data.objects.new(name=name, object_data=mesh)
@@ -36,7 +36,7 @@ def get_bm_and_mask(mesh):
 def boundary_loops_create(bm, loops=2, smoothing=6, smooth_depth=3):
     edges = [e for e in bm.edges if e.is_boundary]
     for _ in range(loops):
-        geom = bmesh.ops.extrude_edge_only(bm, edges=edges)["geom"]
+        geom = bmesh.ops.extrude_edge_only(bm, edges=edges)['geom']
         edges = [e for e in geom if isinstance(e, bmesh.types.BMEdge)]
     boundary_verts = set(v for v in geom if isinstance(v, bmesh.types.BMVert))
     seen_verts = boundary_verts.copy()
@@ -114,10 +114,10 @@ class BoundaryPolish:
 
 @register_class
 class MaskExtract(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.mask_extract"
-    bl_label = "Extract Mask"
-    bl_description = "Extract and solidify Masked region as a new object"
-    bl_options = {"REGISTER"}
+    bl_idname = 'sculpt_tool_kit.mask_extract'
+    bl_label = 'Extract Mask'
+    bl_description = 'Extract and solidify Masked region as a new object'
+    bl_options = {'REGISTER'}
     obj = None
     solidify = None
     smooth = None
@@ -128,12 +128,12 @@ class MaskExtract(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         if context.active_object:
-            return context.active_object.type == "MESH"
+            return context.active_object.type == 'MESH'
 
     def execute(self, context):
         self.last_mode = context.active_object.mode
         self.click_count = 0
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         bm, mask = get_bm_and_mask(context.active_object.data)
 
         self.slider = VerticalSlider(center=None)
@@ -160,22 +160,22 @@ class MaskExtract(bpy.types.Operator):
 
         self.obj = create_object_from_bm(bm,
                                          context.active_object.matrix_world,
-                                         context.active_object.name + "_Shell")
+                                         context.active_object.name + '_Shell')
         self.bm = bm
         self.obj.select_set(True)
         context.view_layer.objects.active = self.obj
 
-        self.displace = self.obj.modifiers.new(type="DISPLACE", name="DISPLACE")
+        self.displace = self.obj.modifiers.new(type='DISPLACE', name='DISPLACE')
         self.displace.strength = 0
-        self.solidify = self.obj.modifiers.new(type="SOLIDIFY", name="Solidify")
+        self.solidify = self.obj.modifiers.new(type='SOLIDIFY', name='Solidify')
         self.solidify.offset = 1
         self.solidify.thickness = 0
-        self.smooth = self.obj.modifiers.new(type="SMOOTH", name="SMOOTH")
+        self.smooth = self.obj.modifiers.new(type='SMOOTH', name='SMOOTH')
         self.smooth.iterations = 5
         self.smooth.factor = 0
 
         context.window_manager.modal_handler_add(self)
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
 
@@ -185,28 +185,28 @@ class MaskExtract(bpy.types.Operator):
 
         dist = context.region_data.view_distance
 
-        if event.type == "LEFTMOUSE" and event.value == "PRESS":
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
             self.click_count += 1
-        elif event.type in {"ESC", "RIGHTMOUSE"}:
+        elif event.type in {'ESC', 'RIGHTMOUSE'}:
             self.click_count = 4
 
-        if event.type == "MOUSEMOVE":
+        if event.type == 'MOUSEMOVE':
 
             delta = self.last_mouse - event.mouse_y
             self.last_mouse = event.mouse_y
             if self.click_count == 0:
                 scale = 700 / dist if not event.shift else 1400 / dist
-                self.solidify.thickness = self.slider.eval(mouse_co, "Thickness", unit_scale=scale)
+                self.solidify.thickness = self.slider.eval(mouse_co, 'Thickness', unit_scale=scale)
                 self.solidify.thickness = max(self.solidify.thickness, 0)
 
             elif self.click_count == 1:
                 scale = 100 if not event.shift else 300
-                self.smooth.factor = self.slider.eval(mouse_co, "Smooth", unit_scale=scale)
+                self.smooth.factor = self.slider.eval(mouse_co, 'Smooth', unit_scale=scale)
                 self.smooth.factor = max(self.smooth.factor, 0)
 
             elif self.click_count == 2:
                 scale = 700 / dist if not event.shift else 1400 / dist
-                self.displace.strength = self.slider.eval(mouse_co, "Displace", unit_scale=scale)
+                self.displace.strength = self.slider.eval(mouse_co, 'Displace', unit_scale=scale)
 
             elif self.click_count >= 3:
                 if self.displace.strength != 0:
@@ -223,33 +223,33 @@ class MaskExtract(bpy.types.Operator):
                     self.obj.modifiers.remove(self.smooth)
                 self.bm.free()
                 self.slider.remove_handler()
-                return {"FINISHED"}
+                return {'FINISHED'}
 
-        return {"RUNNING_MODAL"}
+        return {'RUNNING_MODAL'}
 
 
 @register_class
 class MaskSplit(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.mask_split"
-    bl_label = "Mask Split"
-    bl_description = "Split masked and unmasked areas away."
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.mask_split'
+    bl_label = 'Mask Split'
+    bl_description = 'Split masked and unmasked areas away.'
+    bl_options = {'REGISTER', 'UNDO'}
 
     keep: bpy.props.EnumProperty(
-        name="Keep",
-        items=(("MASKED", "Masked", "Keep darkened parts"),
-               ("UNMASKED", "Unmasked", "Keep light parts"),
-               ("BOTH", "Both", "Keep both sides in separate objects")),
-        default="BOTH"
+        name='Keep',
+        items=(('MASKED', 'Masked', 'Keep darkened parts'),
+               ('UNMASKED', 'Unmasked', 'Keep light parts'),
+               ('BOTH', 'Both', 'Keep both sides in separate objects')),
+        default='BOTH'
     )
 
     @classmethod
     def poll(cls, context):
-        return context.active_object and context.active_object.type == "MESH"
+        return context.active_object and context.active_object.type == 'MESH'
 
     def invoke(self, context, event):
         bpy.ops.ed.undo_push()
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         return context.window_manager.invoke_props_dialog(self)
 
     def remove_half(self, bm, invert=False):
@@ -286,47 +286,47 @@ class MaskSplit(bpy.types.Operator):
         bm1 = bm.copy()
 
         invert = False
-        if self.keep == "MASKED":
+        if self.keep == 'MASKED':
             invert = True
 
         self.remove_half(bm, invert=invert)
         bm.to_mesh(ob.data)
 
-        if self.keep == "BOTH":
+        if self.keep == 'BOTH':
             bpy.ops.object.duplicate()
             self.remove_half(bm1, invert=True)
             bm1.to_mesh(context.active_object.data)
             self.remove_half(bm)
             bm.to_mesh(ob.data)
 
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 @register_class
 class MaskDeformRemove(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.mask_deform_remove"
-    bl_label = "Remove Mask Deform"
-    bl_description = "Remove Mask Rig"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.mask_deform_remove'
+    bl_label = 'Remove Mask Deform'
+    bl_description = 'Remove Mask Rig'
+    bl_options = {'REGISTER', 'UNDO'}
 
     apply: bpy.props.BoolProperty(
-        name="Apply",
-        description="Apply Mask deform before remove",
+        name='Apply',
+        description='Apply Mask deform before remove',
         default=True
     )
 
     @classmethod
     def poll(cls, context):
-        return context.active_object and context.active_object.type == "MESH"
+        return context.active_object and context.active_object.type == 'MESH'
 
     def execute(self, context):
-        if not context.active_object.get("MASK_RIG", False):
-            return {"CANCELLED"}
+        if not context.active_object.get('MASK_RIG', False):
+            return {'CANCELLED'}
 
         if self.apply:
-            bpy.ops.object.convert(target="MESH")
+            bpy.ops.object.convert(target='MESH')
 
-        for item in context.active_object["MASK_RIG"]:
+        for item in context.active_object['MASK_RIG']:
             if type(item) == str:
                 for md in context.active_object.modifiers:
                     if md.name == md:
@@ -337,46 +337,46 @@ class MaskDeformRemove(bpy.types.Operator):
 
             elif type(item) == bpy.types.Object:
                 bpy.data.objects.remove(item)
-        del context.active_object["MASK_RIG"]
+        del context.active_object['MASK_RIG']
         context.area.tag_redraw()
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 @register_class
 class MaskDeformAdd(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.mask_deform_add"
-    bl_label = "Add Mask Deform"
-    bl_description = "Add a rig to deform masked region"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.mask_deform_add'
+    bl_label = 'Add Mask Deform'
+    bl_description = 'Add a rig to deform masked region'
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         if context.active_object:
-            return context.active_object.type == "MESH"
+            return context.active_object.type == 'MESH'
 
     def create_rig(self, context, ob, vg, location, radius=1):
 
-        md = ob.modifiers.new(type="LATTICE", name="MASK_DEFORM")
+        md = ob.modifiers.new(type='LATTICE', name='MASK_DEFORM')
         md.vertex_group = vg.name
         with bpy.types.BlendDataLibraries.load(DEFORM_RIG_PATH) as (data_from, data_to):
-            data_to.objects = ["Lattice", "DeformPivot", "DeformManipulator"]
+            data_to.objects = ['Lattice', 'DeformPivot', 'DeformManipulator']
         for d_ob in data_to.objects:
             context.collection.objects.link(d_ob)
         md.object = data_to.objects[0]
         data_to.objects[0].hide_viewport = True
         data_to.objects[1].location = location
         data_to.objects[1].scale = (radius,) * 3
-        ob["MASK_RIG"] = list(data_to.objects) + [md.name]
+        ob['MASK_RIG'] = list(data_to.objects) + [md.name]
 
     def execute(self, context):
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         self.ob = context.active_object
         bm, mask = get_bm_and_mask(self.ob.data)
-        vg = self.ob.vertex_groups.new(name="MASK_TO_VG")
+        vg = self.ob.vertex_groups.new(name='MASK_TO_VG')
         avg_location = Vector()
         total = 0
         for vert in bm.verts:
-            vg.add([vert.index], weight=vert[mask], type="REPLACE")
+            vg.add([vert.index], weight=vert[mask], type='REPLACE')
             f = vert[mask]
             f = max(0, f * (1 - f)) + 0.001 * f
             avg_location += vert.co * f
@@ -395,29 +395,29 @@ class MaskDeformAdd(bpy.types.Operator):
             self.create_rig(context, self.ob, vg, avg_location, radius)
             self.draw_callback_px = Draw2D()
             self.draw_callback_px.setup_handler()
-            self.draw_callback_px.add_text("[Return] = Finish, [ESC] = Cancell",
+            self.draw_callback_px.add_text('[Return] = Finish, [ESC] = Cancell',
                                            location=Vector((50, 50)),
                                            size=15,
                                            color=(1, 0.5, 0, 1))
             context.window_manager.modal_handler_add(self)
-            return {"RUNNING_MODAL"}
+            return {'RUNNING_MODAL'}
 
         except ZeroDivisionError:
-            self.report(type={"ERROR"}, message="Object does not contain any mask")
-            return {"CANCELLED"}
+            self.report(type={'ERROR'}, message='Object does not contain any mask')
+            return {'CANCELLED'}
 
     def modal(self, context, event):
-        if event.type == "RET":
+        if event.type == 'RET':
             if self.remove_rig(context, apply=True):
                 self.draw_callback_px.remove_handler()
-                return {"FINISHED"}
+                return {'FINISHED'}
 
-        if event.type == "ESC":
+        if event.type == 'ESC':
             if self.remove_rig(context, apply=False):
                 self.draw_callback_px.remove_handler()
-                return {"CANCELLED"}
+                return {'CANCELLED'}
 
-        return {"PASS_THROUGH"}
+        return {'PASS_THROUGH'}
 
     def remove_rig(self, context, apply):
         context.view_layer.objects.active = self.ob
@@ -429,41 +429,41 @@ class MaskDeformAdd(bpy.types.Operator):
 
 @register_class
 class MaskDecimate(bpy.types.Operator):
-    bl_idname = "sculpt_tool_kit.mask_decimate"
-    bl_label = "Mask Decimate"
-    bl_description = "Decimate masked region"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = 'sculpt_tool_kit.mask_decimate'
+    bl_label = 'Mask Decimate'
+    bl_description = 'Decimate masked region'
+    bl_options = {'REGISTER', 'UNDO'}
 
     ratio: bpy.props.FloatProperty(
-        name="Ratio",
-        description="Amount of decimation",
+        name='Ratio',
+        description='Amount of decimation',
         default=0.7
     )
 
     @classmethod
     def poll(cls, context):
         if context.active_object:
-            return context.active_object.type == "MESH"
+            return context.active_object.type == 'MESH'
 
     def invoke(self, context, event):
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.ed.undo_push()
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.ed.undo_push()
         ob = context.active_object
-        vg = ob.vertex_groups.new(name="DECIMATION_VG")
+        vg = ob.vertex_groups.new(name='DECIMATION_VG')
 
         bm, mask = get_bm_and_mask(ob.data)
         for vert in bm.verts:
-            vg.add([vert.index], weight=vert[mask], type="REPLACE")
+            vg.add([vert.index], weight=vert[mask], type='REPLACE')
         ob.vertex_groups.active_index = vg.index
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.decimate(ratio=self.ratio, use_vertex_group=True, vertex_group_factor=10)
-        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
         ob.vertex_groups.remove(vg)
         context.area.tag_redraw()
-        return {"FINISHED"}
+        return {'FINISHED'}

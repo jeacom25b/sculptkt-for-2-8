@@ -44,12 +44,12 @@ def import_modules():
 
     for imported_module in _imported_modules.values():
         importlib.reload(imported_module)
-        print("Reloading:", imported_module)
+        print('Reloading:', imported_module)
 
     for module_name in _modules:
         try:
-            fake_globals = {"__name__": __name__}
-            exec(f"from . import {module_name}", fake_globals)
+            fake_globals = {'__name__': __name__}
+            exec(f'from . import {module_name}', fake_globals)
             _imported_modules[module_name] = (fake_globals[module_name])
 
         except Exception as e:
