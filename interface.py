@@ -106,11 +106,7 @@ class BrushSet(bpy.types.Operator):
 
 
 def brush_icon_get(brush):
-    tool = brush.sculpt_tool
-    if tool == 'DRAW':
-        return 'BRUSH_SCULPT_DRAW'
-    else:
-        return 'BRUSH_' + tool
+    return 'NONE' # todo: find a way to get the correct icon
 
 
 @register_class
@@ -164,11 +160,11 @@ class SCTK_PT_brush_panel(bpy.types.Panel):
             return super().__getattribute__(item)
 
     def paint_settings(self, context):
-        settings = bpy.types.VIEW3D_PT_tools_brush.paint_settings(context)
+        settings = bpy.types.VIEW3D_PT_tools_brush_settings.paint_settings(context)
         return settings
 
     def draw(self, context):
-        bpy.types.VIEW3D_PT_tools_brush.draw(self, context)
+        bpy.types.VIEW3D_PT_tools_brush_settings.draw(self, context)
 
 
 def draw_sculpt_panels(layout, context):
@@ -178,12 +174,14 @@ def draw_sculpt_panels(layout, context):
                    icon=brush_icon_get(brush))
     col = layout.column(align=True)
     col.popover('SCULPT_TOOL_KIT_PT_brush_panel')
+    col.popover('VIEW3D_PT_tools_brush_settings_advanced')
     col.popover('VIEW3D_PT_tools_brush_options', text='Brush Options')
     col.popover('VIEW3D_PT_tools_brush_texture')
     col.popover('VIEW3D_PT_tools_brush_stroke')
     col.popover('VIEW3D_PT_tools_brush_falloff')
     col.popover('VIEW3D_PT_sculpt_options')
     col.popover('VIEW3D_PT_sculpt_dyntopo')
+    col.popover('VIEW3D_PT_sculpt_voxel_remesh')
     col.popover('VIEW3D_PT_sculpt_symmetry')
 
 
