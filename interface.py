@@ -30,7 +30,10 @@ def draw_mask_tools(layout, context):
 
 def draw_remesh_tools(layout, context):
     layout.label(text='Remesh')
-    layout.operator('sculpt_tool_kit.voxel_remesh')
+    row = layout.row(align=True)
+    split = row.split(factor=0.8)
+    split.operator('sculpt_tool_kit.voxel_remesh')
+    split.operator('sculpt_tool_kit.voxel_remesh', text='', icon='MODIFIER').open_dialog = True
     layout.operator('sculpt_tool_kit.decimate')
     layout.operator('sculpt_tool_kit.s_smooth')
 
@@ -106,7 +109,7 @@ class BrushSet(bpy.types.Operator):
 
 
 def brush_icon_get(brush):
-    return 'NONE' # todo: find a way to get the correct icon
+    return 'NONE'  # todo: find a way to get the correct icon
 
 
 @register_class
@@ -434,7 +437,9 @@ class KeyNumSave(bpy.types.Operator):
         key_num_save(context.scene)
         return {'FINISHED'}
 
+
 addon_keymaps = []
+
 
 def set_keymap():
     prefs = bpy.context.preferences.addons[ADDON_NAME].preferences

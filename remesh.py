@@ -41,118 +41,31 @@ def edge_length_squared(edge):
 class VoxelRemesh(bpy.types.Operator):
     bl_idname = 'sculpt_tool_kit.voxel_remesh'
     bl_label = 'Voxel Remesh'
-    bl_description = 'Remesh using remesh modifier.'
+    bl_description = 'Remesh using voxel remesher.'
     bl_options = {'REGISTER', 'UNDO'}
 
-    depth: bpy.props.IntProperty(
-        name='Depth',
-        description='The resolution relative to object bounding box',
-        min=1,
-        default=6
-    )
-
-    clean_topology: bpy.props.BoolProperty(
-        name='Clean Topology',
-        description='Run a cleaning algorith to make topology simpler and smoother',
-        default=True
-    )
-
-    smooth_shading: bpy.props.BoolProperty(
-        name='Smooth Shading',
-        description='Add Smooth Shading',
-        default=False
-    )
-
-    def _topology_optimize(self, bm):
-        bm.verts.ensure_lookup_table()
-        edge_counts = [len(vert.link_edges) for vert in bm.verts]
-
-        mergeable_faces = {}
-        star_faces = {}
-        for face in bm.faces:
-            three_edge_verts = []
-            star_edge_verts = []
-            for vert in face.verts:
-                if edge_counts[vert.index] == 3:
-                    three_edge_verts.append(vert)
-                elif edge_counts[vert.index] == 6:
-                    star_edge_verts.append(vert)
-            if len(three_edge_verts) == 2:
-                mergeable_faces[face] = three_edge_verts
-            if len(star_edge_verts) == 2:
-                star_faces[face] = star_edge_verts
-
-        seen_verts = set()
-        t_map = {}
-        for face in mergeable_faces.keys():
-            vert0 = mergeable_faces[face][0]
-            vert1 = mergeable_faces[face][1]
-            vert0.select = True
-            vert1.select = True
-            merge = True
-            if face in star_faces:
-                hex_face_count = 0
-                for edge in face.edges:
-                    for l_face in edge.link_faces:
-                        if l_face is not face:
-                            if l_face in star_faces:
-                                hex_face_count += 1
-                if hex_face_count > 2:
-                    vec = vert0.co - vert1.co
-                    if False in (abs(vec.z) > val for val in (abs(vec.x), abs(vec.y))):
-                        merge = False
-            if merge and vert0 not in seen_verts and vert1 not in seen_verts:
-                seen_verts.add(vert0)
-                seen_verts.add(vert1)
-                co = (vert0.co + vert1.co) / 2
-                vert0.co = co
-                vert1.co = co
-                t_map[vert0] = vert1
-        bmesh.ops.weld_verts(bm, targetmap=t_map)
-
-    def _smooth_reproject(self, bm):
-        for vert in bm.verts:
-            co = Vector()
-            for edge in vert.link_edges:
-                co += edge.other_vert(vert).co
-            co /= len(vert.link_edges)
-            co -= vert.co
-            co -= vert.normal * vert.normal.dot(co)
-            vert.co += co
-
-    @classmethod
-    def poll(cls, context):
-        return is_mesh_pool(context)
+    open_dialog: bpy.props.BoolProperty(default=False)
 
     def invoke(self, context, event):
-        bpy.ops.object.mode_set(mode='OBJECT')
-        bpy.ops.ed.undo_push()
-        return context.window_manager.invoke_props_dialog(self)
+        if self.open_dialog:
+            wm = context.window_manager
+            return wm.invoke_props_dialog(self)
+        return self.execute(context)
+
+    def draw(self, context):
+        layout = self.layout
+        mesh = context.active_object.data
+
+        layout.prop(mesh, 'remesh_voxel_size')
+        layout.prop(mesh, 'remesh_voxel_adaptivity')
+        layout.prop(mesh, 'use_remesh_fix_poles')
+        layout.prop(mesh, 'use_remesh_smooth_normals')
+        layout.prop(mesh, 'use_remesh_preserve_volume')
+        layout.prop(mesh, 'use_remesh_preserve_paint_mask')
+        layout.prop(mesh, 'use_remesh_preserve_sculpt_face_sets')
 
     def execute(self, context):
-        for ob in context.view_layer.objects.selected:
-            if not ob.type == 'MESH':
-                continue
-            context.view_layer.objects.active = ob
-            bm = bmesh.new()
-            bm.from_mesh(ob.data)
-            tree = BVHTree.FromBMesh(bm)
-            md = ob.modifiers.new(type='REMESH', name='Remesh')
-            md.mode = 'SMOOTH'
-            md.mode = 'SMOOTH'
-            md.use_remove_disconnected = False
-            md.octree_depth = self.depth
-            bpy.ops.object.modifier_apply(modifier=md.name)
-            bm = bmesh.new()
-            bm.from_mesh(ob.data)
-            if self.clean_topology:
-                self._topology_optimize(bm)
-                self._topology_optimize(bm)
-                self._smooth_reproject(bm)
-            surfacce_snap(bm.verts, tree)
-            bm.to_mesh(ob.data)
-        if self.smooth_shading:
-            bpy.ops.object.shade_smooth()
+        bpy.ops.object.voxel_remesh()
         return {'FINISHED'}
 
 
