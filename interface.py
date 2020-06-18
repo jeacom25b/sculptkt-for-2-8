@@ -383,7 +383,7 @@ class NumberRowListener(bpy.types.Operator):
                         def draw(self, context):
                             pie = self.layout.menu_pie()
                             for brush in matching_brushes:
-                                pie.operator('sculpt_tool_kit.brush_set').brush = brush.name
+                                pie.operator('sculpt_tool_kit.brush_set', text=brush.name).brush = brush.name
 
                         context.window_manager.popup_menu_pie(
                             event, draw, title='Pick Brush')
