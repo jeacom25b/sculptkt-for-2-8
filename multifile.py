@@ -10,6 +10,7 @@ class RegisterStuff:
     imported_modules = []
     registered_classes = []
     module_names = []
+    menu_entries = []
 
     def __init__(self):
         raise RuntimeError("cant instantiate")
@@ -18,11 +19,22 @@ class RegisterStuff:
         RegisterStuff.all_classes.clear()
         RegisterStuff.register_fncs.clear()
         RegisterStuff.unregister_fncs.clear()
+        for menu_cls, entry in RegisterStuff.menu_entries:
+            menu_cls.remove(entry)
 
 
-def register_class(cls):
+def register_class(cls=None):
     RegisterStuff.all_classes.append(cls)
     return cls
+
+
+def topbar_mt_app_system_add(op):
+    def draw(self, context):
+        layout = self.layout
+        layout.operator(op.bl_idname)
+    bpy.types.TOPBAR_MT_app_system.append(draw)
+    RegisterStuff.menu_entries.append((bpy.types.TOPBAR_MT_app_system, draw))
+    return op
 
 
 def register_function(func):
@@ -76,6 +88,7 @@ def import_modules():
         except Exception as e:
             print(e)
             raise e
+
 
 def add_modules(modules):
     for modname in modules:

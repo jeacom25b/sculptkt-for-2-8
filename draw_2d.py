@@ -47,6 +47,14 @@ class Draw2D:
         self.colors.append(color_a)
         self.colors.append(color_b if color_b else color_a)
 
+    def add_line_loop(self, points, color, cyclic=True):
+        if cyclic:
+            for i in range(len(points)):
+                self.add_line(points[i], points[(1 + i) % len(points)], color)
+        else:
+            for i in range(len(points) - 1):
+                self.add_line(points[i], points[(1 + i) % len(points)], color)
+
     def remove_last_line(self):
         self.batch_redraw = True
         self.vertices.pop(-1)

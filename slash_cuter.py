@@ -19,7 +19,7 @@ def screen_space_to_3d(location, distance, context):
     return location
 
 
-def cut(context, points, thickness=0.0001, distance_multiplier=10, ciclic=True):
+def cut(context, points, thickness=0.0001, distance_multiplier=10, cyclic=True):
     origin = screen_space_to_3d((0, 0), 0, context)
     dist = context.region_data.view_distance
     end = context.space_data.clip_end
@@ -35,7 +35,7 @@ def cut(context, points, thickness=0.0001, distance_multiplier=10, ciclic=True):
         c, d = verts[i + 1]
         bm.faces.new((a, b, d, c))
 
-    if ciclic and len(points) > 2:
+    if cyclic and len(points) > 2:
         a, b = verts[0]
         c, d = verts[-1]
         bm.faces.new((a, b, d, c))
@@ -85,7 +85,7 @@ class PolyCut:
         self.confirm_distance = 20
         self.points = []
 
-        self.ciclic = False
+        self.cyclic = False
         self.mode = 'DRAW'
         self.left = False
         self.right = False
@@ -123,7 +123,7 @@ class PolyCut:
 
         if event.value == 'PRESS':
             if event.type == 'C':
-                self.ciclic = not self.ciclic
+                self.cyclic = not self.cyclic
 
             elif event.type == 'G' and not self.left:
                 self.mode = 'MOVE' if self.mode == 'DRAW' else 'MOVE'
@@ -184,7 +184,7 @@ class PolyCut:
             self.points[i] += direction
 
     def cut(self, context):
-        cut(context, self.points, ciclic=self.ciclic)
+        cut(context, self.points, cyclic=self.cyclic)
 
     def draw(self):
         self.renderer.clear()
@@ -199,7 +199,7 @@ class PolyCut:
             t = 1 - min(max(d / self.confirm_distance, 0), 1)
             cut = d <= self.confirm_distance
 
-            if self.ciclic and len(self.points) > 2:
+            if self.cyclic and len(self.points) > 2:
                 self.renderer.add_line(self.points[0],
                                        self.points[-1] if cut else self.mouse_co,
                                        self.color)
@@ -275,7 +275,7 @@ class RectangleCut(PolyCut):
         return points
 
     def cut(self, context):
-        cut(context, self.get_rect_corners(self.points[0], self.points[1]), ciclic=True)
+        cut(context, self.get_rect_corners(self.points[0], self.points[1]), cyclic=True)
 
     def draw(self):
         self.renderer.clear()
@@ -348,7 +348,7 @@ class EllipseCut(PolyCut):
 
     def cut(self, context):
         points = self.get_circle_points(self.points[0], self.points[1])
-        cut(context, points, ciclic=True)
+        cut(context, points, cyclic=True)
 
     def draw(self):
         self.renderer.clear()
@@ -453,7 +453,7 @@ class SplineCut(PolyCut):
         points.append(self.mouse_co)
         for i in range(self.spline_resolution):
             points = self.points_smooth(self.subdiv_points(points))
-        cut(context, points, ciclic=False)
+        cut(context, points, cyclic=False)
 
 
 @register_class
@@ -468,7 +468,7 @@ class Slash(bpy.types.Operator):
     help_text = [
         'Mode: PolyLine = [D], Ellipse = [E], Rectangle = [R], Spline = [S]',
         'Move Around: [G]',
-        'Toggle Ciclic: [C]',
+        'Toggle cyclic: [C]',
         'Regular Mode: [Ctrl]',
         'Undo: [Ctrl] + [Z]'
     ]

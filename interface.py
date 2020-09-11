@@ -482,7 +482,7 @@ def reload_keymap(self, context):
 class SetShortcut(bpy.types.Operator):
     bl_idname = 'sculpt_toolkit.set_shortcut'
     bl_label = 'Click to choose a new shortcut'
-    bl_description = 'Change sculpt_toolki\' shortcut'
+    bl_description = 'Change sculpt_toolki\'t shortcut'
     bl_options = {'REGISTER', 'INTERNAL'}
 
     button_text = 'Change Shortcut'

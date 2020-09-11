@@ -3,13 +3,13 @@ from random import choice
 import traceback
 import importlib
 
-from .multifile import register, unregister, add_modules, import_modules, register_class
+from .multifile import register, unregister, add_modules, import_modules
 
 bl_info = {
     'name': 'Sculpt Tool Kit',
     'description': 'Sculpting tools to improve workflow',
     'author': 'Jean Da Costa Machado',
-    'version': (1, 29, 2),
+    'version': (1, 5, 0),
     'blender': (2, 80, 0),
     'wiki_url': '',
     'category': 'Sculpt',
@@ -23,5 +23,7 @@ add_modules(['booleans',
             'mesh_ops',
             'remesh',
             'slash_cuter',
+            'interactive',
+            'slash_cut',
             'symmetry_tools'])
 import_modules()
