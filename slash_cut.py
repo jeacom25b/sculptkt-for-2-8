@@ -564,6 +564,7 @@ class SlashCutter(InteractiveOperator):
             cyclic mode (C): {'enabled' if tool.cyclic else 'disabled'}
             orthogonal mode (ctrl): {'enabled' if tool.orthogonal else 'disabled'}
             undo: (ctrl + Z)
+            change resolution: wheel +/- 
             '''
 
             for i, line in enumerate(reversed(help_text.split('\n'))):
