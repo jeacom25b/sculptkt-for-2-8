@@ -552,19 +552,15 @@ class SlashCutter(InteractiveOperator):
                     if event.type == 'RET' or self.lmb:
                         break
 
-            elif event.type == 'C' and event.value == 'PRESS':
-                tool.cyclic = not tool.cyclic
-
             elif event.type == 'ESC':
                 return {'CANCELLED'}
 
             help_text = f'''
             Current tool: {tool.__class__.__name__}
             D: PolyCut, E: EllipseCut, S: SplineCut, R: RectangleCut
-            cyclic mode (C): {'enabled' if tool.cyclic else 'disabled'}
             orthogonal mode (ctrl): {'enabled' if tool.orthogonal else 'disabled'}
             undo: (ctrl + Z)
-            change resolution: wheel +/- 
+            change resolution: wheel +/-
             '''
 
             for i, line in enumerate(reversed(help_text.split('\n'))):
