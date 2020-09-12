@@ -22,7 +22,6 @@ add_modules(['booleans',
             'mask_tools',
             'mesh_ops',
             'remesh',
-            'slash_cuter',
             'interactive',
             'slash_cut',
             'symmetry_tools'])

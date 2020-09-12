@@ -478,9 +478,8 @@ last_tool = PolyCut
 @topbar_mt_app_system_add
 @register_class
 class SlashCutter(InteractiveOperator):
-    bl_idname = 'sculpt_tool_kit.slash_cut_start'
-    bl_label = 'test slash cut'
-
+    bl_idname = 'sculpt_tool_kit.slash'
+    bl_label = 'Slash Cutter'
 
 
     def loop(self, context):
