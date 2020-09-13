@@ -108,10 +108,7 @@ class SlashToolBase:
 
         old_points = self.points
         while True:
-            print('grab mode')
             new_co = yield
-            print(new_co)
-            print(mouse_co)
             self.points = [pt + new_co - mouse_co for pt in old_points]
 
     def on_click(self, mouse_co):
@@ -143,7 +140,6 @@ class PolyCut(SlashToolBase):
     min_point_dist = 10
 
     def on_drag(self, mouse_co):
-        print('drag')
         if self.points:
             d = (mouse_co - self.points[-1]).length
             if d > self.min_point_dist * 2:
@@ -152,7 +148,6 @@ class PolyCut(SlashToolBase):
             self.points.append(mouse_co)
 
     def on_click(self, mouse_co):
-        print('click')
         if self.points:
             end1 = self.points[0]
             end2 = self.points[-1]
@@ -176,7 +171,6 @@ class PolyCut(SlashToolBase):
             self.points.pop(-1)
 
     def draw(self, draw_2d, mouse_co):
-        print('draw')
         if len(self.points) > 1:
             for i in range(len(self.points) - 1):
                 p1 = self.points[i]
@@ -254,7 +248,6 @@ class EllipseCut(SlashToolBase):
             elif n == 2:
                 u = self.points[1] - self.points[0]
                 v = (mouse_co - self.points[0])
-                print(u.dot(v))
 
             elif n == 3:
                 u = self.points[1] - self.points[0]
@@ -477,7 +470,6 @@ class SlashCutter(InteractiveOperator):
             event = yield {'RUNNING_MODAL'}
             self.draw_2d.clear()
 
-            print(event.type, event.value, event.ctrl)
 
             if event.ctrl:
                 mouse_co = tool.ortho_project(self.mouse_co)
