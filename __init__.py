@@ -17,6 +17,7 @@ bl_info = {
 
 add_modules(['booleans',
             'draw_2d',
+            'draw_3d',
             'envelope_builder',
             'interface',
             'mask_tools',
@@ -24,5 +25,6 @@ add_modules(['booleans',
             'remesh',
             'interactive',
             'slash_cut',
+            'object_brush',
             'symmetry_tools'])
 import_modules()

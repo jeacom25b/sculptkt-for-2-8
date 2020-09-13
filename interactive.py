@@ -1,6 +1,21 @@
 import bpy
 from mathutils import Vector
 from . draw_2d import Draw2D
+from . draw_3d import Draw3D
+from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_origin_3d, region_2d_to_location_3d
+
+def screen_space_to_3d(location, distance, context):
+    region = context.region
+    data = context.space_data.region_3d
+    if data.is_perspective:
+        vec = region_2d_to_vector_3d(region, data, location)
+        origin = region_2d_to_origin_3d(region, data, location, distance)
+    else:
+        vec = data.view_rotation @ Vector((0, 0, -1))
+        origin = region_2d_to_location_3d(
+            region, data, location, -vec * data.view_distance)
+    location = vec * distance + origin
+    return location
 
 
 class InteractiveOperator(bpy.types.Operator):
@@ -8,6 +23,7 @@ class InteractiveOperator(bpy.types.Operator):
 
     _loop = None
     draw_2d = None
+    draw_3d = None
 
     lmb = False
     rmb = False
@@ -52,7 +68,9 @@ class InteractiveOperator(bpy.types.Operator):
         wm.modal_handler_add(self)
         self._loop = self.loop(context)
         self.draw_2d = Draw2D()
+        self.draw_3d = Draw3D()
         self.draw_2d.setup_handler()
+        self.draw_3d.setup_handler()
         return next(self._loop)
 
     def modal(self, context, event):
@@ -64,10 +82,16 @@ class InteractiveOperator(bpy.types.Operator):
         except StopIteration:
             ret = {'FINISHED'}
             self.draw_2d.remove_handler()
+            self.draw_3d.remove_handler()
 
         except:
             self.draw_2d.remove_handler()
+            self.draw_3d.remove_handler()
             raise
+
+        if ret & {'CANCELLED', 'FINISHED'}:
+            self.draw_2d.remove_handler()
+            self.draw_3d.remove_handler()
 
         return ret
 

@@ -1,8 +1,7 @@
 import bpy
-from . interactive import InteractiveOperator
+from . interactive import InteractiveOperator, screen_space_to_3d
 from . multifile import register_class, topbar_mt_app_system_add
 from mathutils import Vector
-from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_origin_3d, region_2d_to_location_3d
 import bmesh
 from math import sin, cos, pi
 
@@ -14,18 +13,6 @@ BLUE = Vector((0, 0, 1, 1))
 ALPHA = Vector((0, 0, 0, 1))
 
 
-def screen_space_to_3d(location, distance, context):
-    region = context.region
-    data = context.space_data.region_3d
-    if data.is_perspective:
-        vec = region_2d_to_vector_3d(region, data, location)
-        origin = region_2d_to_origin_3d(region, data, location, distance)
-    else:
-        vec = data.view_rotation @ Vector((0, 0, -1))
-        origin = region_2d_to_location_3d(
-            region, data, location, -vec * data.view_distance)
-    location = vec * distance + origin
-    return location
 
 
 def cut(context, points, thickness=0.0001, distance_multiplier=10, cyclic=True):
