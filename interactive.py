@@ -81,8 +81,6 @@ class InteractiveOperator(bpy.types.Operator):
 
         except StopIteration:
             ret = {'FINISHED'}
-            self.draw_2d.remove_handler()
-            self.draw_3d.remove_handler()
 
         except:
             self.draw_2d.remove_handler()
